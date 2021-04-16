@@ -1,9 +1,8 @@
-import logging
-
 import maya.cmds as cmds
 
 try:
-    if not cmds.commandPort(":4434", query=True):
+    if not (cmds.about(batch=True) or cmds.commandPort(":4434", query=True)):
         cmds.commandPort(name=":4434")
 except RuntimeError as e:
-    logging.warn("Failed to open command port: {:s}" % e.message)
+    import logging
+    logging.warn("Failed to open command port: %s", e.message)

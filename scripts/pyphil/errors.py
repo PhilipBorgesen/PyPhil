@@ -7,7 +7,8 @@ class ObjectError(RuntimeError):
 
 class NotExistError(ObjectError):
     """
-    NotExistError is raised when an object or attribute does not exist.
+    NotExistError is raised when an object or attribute does not exist
+    or otherwise could not be identified or found.
     """
     pass
 

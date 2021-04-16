@@ -1,24 +1,27 @@
 import maya.cmds as cmds
 import maya.OpenMaya as om
 
-from errors import *
+from pyphil.errors import *
+from pyphil.name import Name
 
-def _query(name):
+def _query(pattern):
     """
-    _query returns a reference to the OpenMaya node identified by name.
+    _query returns a reference to the OpenMaya node identified by pattern.
 
-    :param name: is an identifier uniquely identifying the node.
-    :raises NotExistError: if no node could be found with the name.
-    :raises NotUniqueError: if multiple nodes could be found with the name.
+    :param pattern: is an name pattern uniquely identifying the node.
+    :raises NotExistError:  if no node matched the pattern.
+    :raises NotUniqueError: if multiple nodes matched the pattern.
     """
     # MObject is a reference to a Maya node
     ref = om.MObject()
     # Create an OpenMaya selection list
     selection = om.MSelectionList()
     try:
-        # Add the node, identified by its name, to the selection.
+        # Add the node, identified by the pattern, to the selection.
         # If this succeeds the selection contains a reference to the node.
-        selection.add(name)
+        selection.add(pattern)
+        if selection.length() > 1:
+            raise NotUniqueError("identifier '{:s}' is not unique".format(pattern))
         # Make ref point to the first (and only) node in the selection.
         selection.getDependNode(0, ref)
         return ref
@@ -26,11 +29,11 @@ def _query(name):
         if not str(e.message).startswith("(kInvalidParameter)"):
             raise e  # Unknown error occurred
 
-    # name is not unique or it does not exist. Figure out which it is.
-    if cmds.objExists(name):
-        raise NotUniqueError("identifier '{:s}' is not unique".format(name))
+    # pattern is not unique or matches no object. Figure out which it is.
+    if cmds.objExists(pattern):
+        raise NotUniqueError("identifier '{:s}' is not unique".format(pattern))
     else:
-        raise NotExistError("object '{:s}' does not exist".format(name))
+        raise NotExistError("object '{:s}' does not exist".format(pattern))
 
 class Object:
     """
@@ -43,13 +46,14 @@ class Object:
     def list(cls, iterable):
         """
         list returns a list of Objects representing all objects identified
-        by names in iterable, which is a list, generator, or other Python type
-        which can be iterated.
+        by patterns in iterable, which is a list, generator, or other Python
+        type which can be iterated. Each pattern must map to a signle object.
 
         As a special case, if iterable is None, list returns the empty list.
 
-        :return: a list of Objects representing the objects in iterable
-        :raises ObjectError: if any of the objects could not be identified uniquely
+        :return: a list of Objects representing the objects in iterable.
+        :raises ObjectError: if any of the patterns failed to identify a
+                             single, unique object.
         """
         if iterable is None:
             return []
@@ -59,68 +63,28 @@ class Object:
     def fromName(cls, name):
         """
         fromName returns an Object referencing the object identified by name.
+        The name can be a partial path or contain wildcards but must identify
+        a single object uniquely. Any name value given is attempted converted to
+        string before use.
 
-        :param name: is a unique name or path to the object
-        :return: an Object representing the object
-        :raises NotExistError: if no object exist by the given name
-        :raises NotUniqueError: if more than one object is identified by name
+        :param name: is a unique name or path to the object, either a string
+                     or an object with a reasonable __str__ implementation.
+        :return: an Object representing the object.
+        :raises NotExistError: if no object exist by the given name.
+        :raises NotUniqueError: if more than one object is identified by name.
         """
         if isinstance(name, Object):
             return name
-        return Object(_query(name))
+        return Object(_query(str(name)))
 
     def __init__(self, mobject):
         self._ref = mobject
-        # Assume mobject is a DAG node
-        self._dag = om.MFnDagNode()
-        self._dag.setObject(om.MDagPath.getAPathTo(mobject))
-
-    def _node(self):
-        """
-        :returns: the underlying Maya node as a dependency node
-        """
-        if not hasattr(self, "_depNode"):
-            self._dependencyNode = om.MFnDependencyNode()
-            self._dependencyNode.setObject(self._ref)
-        return self._dependencyNode
-
-    def name(self, long=False):
-        """
-        name returns a string that uniquely identifies the object.
-        By default the shortest possible unique identifier is returned.
-
-        :param long: if long is True, the long name of the object is returned instead.
-        :returns: the Maya Python name of the object
-        """
-        if self.isDAG():
-            # if node is a DAG node that exists...
-            if long:
-                return self._dag.fullPathName()
-            return self._dag.partialPathName()
+        if mobject.hasFn(om.MFn.kDagNode):
+            self._node = om.MFnDagNode(mobject)
+        elif mobject.hasFn(om.MFn.kDependencyNode):
+            self._node = om.MFnDependencyNode(mobject)
         else:
-            return self._node().name()
-
-    def isDAG(self):
-        """
-        isDAG returns whether the object represents a DAG node.
-        DAG nodes include groups, transforms, shapes, and other objects shown
-        in the Maya Outliner.
-
-        :return: True if the object is a DAG object
-        """
-        return self._dag.dagPath().isValid()
-
-    def _requireDAG(self):
-        if not self.isDAG():
-            raise TypeError("object '{:s}' is not a DAG object".format(self))
-
-    def __repr__(self):
-        """
-        __repr__ is called by Python when a machine-readable string representation
-        of self is needed, e.g. when str(self) is called.
-        The string representation is the shortest unique name of the represented object.
-        """
-        return self.name(long=False)
+            self._node = None
 
     def __eq__(self, other):
         """
@@ -134,15 +98,67 @@ class Object:
         """
         return not isinstance(other, Object) or self._ref != other._ref
 
+    def __nonzero__(self):
+        """
+        __nonzero__ is called when self is converted to boolean, such as
+        the condition of an if statement.
+        """
+        return self._node is not None
+
+    # Setup Python 3 version
+    __bool__ = __nonzero__
+
+    def __str__(self):
+        """
+        __str__ is called by Python when a string representation of self is needed, e.g.
+        when str(self) is called. The string representation is the shortest unique name
+        of the represented object.
+        """
+        return self.name(string=True)
+
+    def __repr__(self):
+        """
+        __repr__ is called by Python when a machine-readable string representation of self
+        is needed. The string representation is the shortest unique name of the represented
+        object.
+        """
+        return self.name(string=True)
+
+    def name(self, string=False):
+        """
+        name returns a unique string-based identifier for the object.
+        By default a pyphil Name object is returned, but if the string
+        parameter is True a string of the shortest possible unique name
+        is returned instead.
+
+        :param string: if True, instead returns the name as string.
+        :returns: a Name describing the long name of the object.
+        """
+        node = self._node
+        if node is None:
+            return None  # Should never occur under normal usage
+
+        if isinstance(node, om.MFnDagNode):
+            if string:
+                n = node.partialPathName()
+            else:
+                n = node.fullPathName()
+        else:
+            n = node.name()
+
+        if string:
+            return n
+
+        return Name.of(n)
+
     def parent(self):
         """
-        parent returns the parent of the object, given that it is DAG node.
-        If the DAG node has no parent, None is returned.
+        parent returns the parent of the object if it has one, otherwise None.
 
-        :returns: the parent of the DAG node, or None
-        :raises TypeError: if the object is not a DAG node
+        :returns: the parent of the node, or None
         """
-        self._requireDAG()
-        if self._dag.parentCount() == 0:
-            return None
-        return Object(self._dag.parent(0))
+        node = self._node
+        if isinstance(node, om.MFnDagNode):
+            if node.parentCount() > 0:
+                return Object(node.parent(0))
+        return None

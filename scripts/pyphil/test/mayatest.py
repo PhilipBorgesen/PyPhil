@@ -6,5 +6,5 @@ import unittest
 
 class TestCase(unittest.TestCase):
 
-    def setUp(self):
+    def tearDown(self):
         cmds.file(newFile=True, force=True)
