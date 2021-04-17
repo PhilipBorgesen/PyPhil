@@ -4,24 +4,25 @@ import maya.OpenMaya as om
 from pyphil.errors import *
 from pyphil.name import Name
 
-def _query(pattern):
+def _query(identifier):
     """
-    _query returns a reference to the OpenMaya node identified by pattern.
+    _query returns a reference to the OpenMaya node identified by identifier.
+    The identifier may be a string name pattern or an OpenMaya MUuid object.
 
-    :param pattern: is an name pattern uniquely identifying the node.
-    :raises NotExistError:  if no node matched the pattern.
-    :raises NotUniqueError: if multiple nodes matched the pattern.
+    :param identifier: is a name pattern or UUID uniquely identifying the node.
+    :raises NotExistError:  if no node was identified by the identifier.
+    :raises NotUniqueError: if multiple nodes matched the identifier pattern.
     """
     # MObject is a reference to a Maya node
     ref = om.MObject()
     # Create an OpenMaya selection list
     selection = om.MSelectionList()
     try:
-        # Add the node, identified by the pattern, to the selection.
+        # Add the node, identified by the identifier, to the selection.
         # If this succeeds the selection contains a reference to the node.
-        selection.add(pattern)
+        selection.add(identifier)
         if selection.length() > 1:
-            raise NotUniqueError("identifier '{:s}' is not unique".format(pattern))
+            raise NotUniqueError("identifier '{:s}' is not unique".format(identifier))
         # Make ref point to the first (and only) node in the selection.
         selection.getDependNode(0, ref)
         return ref
@@ -30,10 +31,12 @@ def _query(pattern):
             raise e  # Unknown error occurred
 
     # pattern is not unique or matches no object. Figure out which it is.
-    if cmds.objExists(pattern):
-        raise NotUniqueError("identifier '{:s}' is not unique".format(pattern))
+    if isinstance(identifier, om.MUuid):
+        raise NotExistError("object <{:s}> does not exist".format(identifier.asString()))
+    if len(cmds.ls(identifier)) == 0:
+        raise NotExistError("object '{:s}' does not exist".format(identifier))
     else:
-        raise NotExistError("object '{:s}' does not exist".format(pattern))
+        raise NotUniqueError("identifier '{:s}' is not unique".format(identifier))
 
 class Object:
     """
@@ -77,6 +80,30 @@ class Object:
             return name
         return Object(_query(str(name)))
 
+    @classmethod
+    def fromUUID(cls, uuid):
+        """
+        fromUUID returns an Object referencing the object with the given uuid.
+
+        :param uuid: is the universally unique identifier of the object.
+        :returns: an Object representing the object.
+        :raises NotExistError: if no object exist with the given uuid.
+        """
+        if isinstance(uuid, str):
+            uuid = om.MUuid(uuid)
+        elif not isinstance(uuid, om.MUuid):
+            raise ValueError("uuid must be a string or of type maya.OpenMaya.MUuid")
+        return Object(_query(uuid))
+
+    @classmethod
+    def world(cls):
+        """
+        world returns an Object referencing the world node.
+
+        :return: an Object representing the world.
+        """
+        return Object(om.MItDag().root())
+
     def __init__(self, mobject):
         self._ref = mobject
         if mobject.hasFn(om.MFn.kDagNode):
@@ -87,22 +114,18 @@ class Object:
             self._node = None
 
     def __eq__(self, other):
-        """
-        __eq__ is called when self == other is evaluated.
-        """
         return isinstance(other, Object) and self._ref == other._ref
 
     def __ne__(self, other):
-        """
-        __ne__ is called when self != other is evaluated.
-        """
         return not isinstance(other, Object) or self._ref != other._ref
 
+    def __hash__(self):
+        # MObject does not implement __hash__ so this is the best hash
+        # we can provide in the general case. Names, paths, and UUIDs may
+        # change so hashes of those cannot be used.
+        return self._ref.apiType()
+
     def __nonzero__(self):
-        """
-        __nonzero__ is called when self is converted to boolean, such as
-        the condition of an if statement.
-        """
         return self._node is not None
 
     # Setup Python 3 version
@@ -112,17 +135,12 @@ class Object:
         """
         __str__ is called by Python when a string representation of self is needed, e.g.
         when str(self) is called. The string representation is the shortest unique name
-        of the represented object.
+        of the represented object or "<world>" if self represents the world object.
         """
         return self.name(string=True)
 
     def __repr__(self):
-        """
-        __repr__ is called by Python when a machine-readable string representation of self
-        is needed. The string representation is the shortest unique name of the represented
-        object.
-        """
-        return self.name(string=True)
+        return 'Object.fromName("{:s}")'.format(self.name(string=True))
 
     def name(self, string=False):
         """
@@ -130,6 +148,10 @@ class Object:
         By default a pyphil Name object is returned, but if the string
         parameter is True a string of the shortest possible unique name
         is returned instead.
+
+        As a special case, if string=True and self represents the world
+        object then name returns "<world>". This is not a valid name
+        but neither is "", the name actually held by the world object.
 
         :param string: if True, instead returns the name as string.
         :returns: a Name describing the long name of the object.
@@ -146,10 +168,26 @@ class Object:
         else:
             n = node.name()
 
+        if n == "":  # Nodes have non-empty names, except the world node
+            n = "<world>"
+
         if string:
             return n
 
         return Name.of(n)
+
+    def uuid(self):
+        """
+        uuid returns as string the universally unique identifier (UUID) of the object
+        represented by self.
+
+        :return: the uuid of the object as string
+        """
+        node = self._node
+        if node is None:
+            return None  # Should never occur under normal usage
+
+        return node.uuid().asString()
 
     def parent(self):
         """

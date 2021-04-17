@@ -1,5 +1,5 @@
 from pyphil.test import TestCase
-from pyphil import Object
+from pyphil import Object, Name
 from pyphil.errors import *
 
 import maya.OpenMaya as om
@@ -50,6 +50,29 @@ class TestObject(TestCase):
         with self.assertRaises(NotUniqueError) as _:
             Object.fromName("*uplicate")
 
+    uuid = "11111111-1111-1111-1111-111111111111"
+
+    def test_fromUUID_success_string(self):
+        self.impl_fromUUID_success(TestObject.uuid)
+
+    def test_fromUUID_success_muuid(self):
+        self.impl_fromUUID_success(om.MUuid(TestObject.uuid))
+
+    def impl_fromUUID_success(self, uuid):
+        obj = Object.fromName("unique")
+        TestObject.setUUID(obj, uuid)
+        obj2 = Object.fromUUID(uuid)
+        self.assertIsInstance(obj2, Object)
+
+    def test_fromUUID_notFound(self):
+        with self.assertRaises(NotExistError) as _:
+            Object.fromUUID(TestObject.uuid)
+
+    def test_world(self):
+        obj = Object.fromName("|duplicate")
+        world = obj.parent()
+        self.assertEqual(world, Object.world())
+
     def test_eq(self):
         a = Object.fromName("unique")
         b = Object.fromName("|duplicate")
@@ -92,6 +115,11 @@ class TestObject(TestCase):
         b = Object(om.MObject())
         self.assertFalse(b)
 
+    def test_hash(self):
+        a = Object.fromName("unique")
+        b = Object.fromName("unique")
+        self.assertEqual(1, len({a, b}), "hash function not working")
+
     def test_name_name(self):
         # DAG nodes
         self.assertEqual("|group2|group1|unique",    str(Object.fromName("unique").name()))
@@ -104,6 +132,8 @@ class TestObject(TestCase):
         # Non-DAG nodes
         self.assertEqual("lambert1", str(Object.fromName("lambert1").name()))
         self.assertEqual("lambert1", str(Object.fromName(":lambert1").name()))
+        # World node
+        self.assertEqual(Name.world, Object.world().name())
 
     def test_name_string(self):
         # DAG nodes
@@ -117,6 +147,13 @@ class TestObject(TestCase):
         # Non-DAG nodes
         self.assertEqual("lambert1", Object.fromName("lambert1").name(string=True))
         self.assertEqual("lambert1", Object.fromName(":lambert1").name(string=True))
+        # World node
+        self.assertEqual("<world>", Object.world().name(string=True))
+
+    def test_uuid(self):
+        obj = Object.fromName("unique")
+        uuid = TestObject.getUUID(obj)
+        self.assertEqual(uuid.asString(), obj.uuid())
 
     def test_parent_group(self):
         unique = Object.fromName("unique")
@@ -127,8 +164,7 @@ class TestObject(TestCase):
     def test_parent_world(self):
         group2 = Object.fromName("|group2")
         parent = group2.parent()
-        self.assertIsNotNone(parent)
-        self.assertEqual("", str(parent.name()))
+        self.assertEqual(Object.world(), parent)
 
     def test_parent_none_world(self):
         group2 = Object.fromName("|group2")
@@ -139,5 +175,17 @@ class TestObject(TestCase):
         nonDAG = Object.fromName("lambert1")
         parent = nonDAG.parent()
         self.assertIsNone(parent)
+
+    # HELPERS
+
+    @classmethod
+    def getUUID(cls, obj):
+        return obj._node.uuid()
+
+    @classmethod
+    def setUUID(cls, obj, uuid):
+        if isinstance(uuid, str):
+            uuid = om.MUuid(uuid)
+        obj._node.setUuid(uuid)
 
 
