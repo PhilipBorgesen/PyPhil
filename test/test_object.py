@@ -7,13 +7,17 @@ import maya.cmds as cmds
 
 class TestObject(TestCase):
 
-    def setUp(self):
+    # SETUP
+
+    def sceneInit(self):
         unique = cmds.sphere(name="unique")
         duplicate = cmds.sphere(name="duplicate")
         group1 = cmds.group(unique, duplicate, name="group1")
         duplicate = cmds.sphere(name="duplicate")
         group2 = cmds.group(group1, duplicate, name="group2")
         cmds.sphere(name="duplicate")
+
+    # TESTS
 
     def test_list_none(self):
         self.assertEqual([], Object.list(None))
@@ -33,6 +37,10 @@ class TestObject(TestCase):
     def test_fromName_notFound(self):
         with self.assertRaises(NotExistError) as _:
             Object.fromName("doesNotExist")
+
+    def test_fromName_notFound2(self):
+        with self.assertRaises(NotExistError) as _:
+            Object.fromName("|unique")  # object not located at root
 
     def test_fromName_duplicate(self):
         with self.assertRaises(NotUniqueError) as _:
