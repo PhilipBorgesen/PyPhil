@@ -29,10 +29,10 @@ class SBConvention(NamingConvention):
           The variable "SBConvention" refers to an object of this class.
     """
 
-    # TODO: Complete these sets
-    sides   = {"R", "L", "C"}  # right, left, center; all uppercase
-    modules = {"arm", "leg"}   # all lowercase
-    types   = {"FK", "GEO", "GRP", "IK", "JNT"}  # all uppercase
+    # TODO: Complete these sets.
+    sides   = {"R", "L", "C"}  # right, left, center
+    modules = {"arm", "leg", "spine", "neck", "head", "tail", "hand", "foot"}
+    types   = {"bls", "ctrl", "fol", "geo", "Grp", "jnt", "msh", "loc", "pin", "srf"}
 
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
@@ -105,6 +105,12 @@ class SBName(NameComposition):
             self._decompose()
         return self._type
 
+    # Generate lowercase versions of the fixed component sets
+    # such that they can be used to aid decomposition.
+    _sides   = {s.lower() for s in SBConvention.sides}
+    _modules = {m.lower() for m in SBConvention.modules}
+    _types   = {t.lower() for t in SBConvention.types}
+
     def _decompose(self):
         """
         _decompose parses self._name into individual components.
@@ -130,21 +136,21 @@ class SBName(NameComposition):
         # based on the records of valid values for side, module, and type.
 
         # side
-        if starts[0].upper() in SBConvention.sides:
+        if starts[0].lower() in SBName._sides:
             self._side = starts[0]
             if len(starts) == 1:
                 return
             starts = starts[1:]
 
         # module
-        if starts[0].lower() in SBConvention.modules:
+        if starts[0].lower() in SBName._modules:
             self._module = starts[0]
             if len(starts) == 1:
                 return
             starts = starts[1:]
 
         # type
-        if starts[-1].upper() in SBConvention.types:
+        if starts[-1].lower() in SBName._types:
             self._type = starts[-1]
             if len(starts) == 1:
                 return

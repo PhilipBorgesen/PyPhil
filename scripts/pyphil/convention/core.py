@@ -4,7 +4,7 @@ class NamingConvention(object):
     """
     NamingConvention is the base class for all naming conventions. Its class
     methods manage the global naming convention that is in effect at a given
-    time.
+    time in coordination with NamingConventionScope objects.
 
     The NamingConvention that currently is in effect can be retrieved by
     calling NamingConvention.get(). Code that use naming conventions, such as
@@ -16,7 +16,7 @@ class NamingConvention(object):
     block of code, a so-called scope. A scope can be declared as follows:
 
         sbnc = SBConvention                  # a sample naming convention
-        with NamingConvention(sbnc):         # start a new scope
+        with NamingConventionScope(sbnc):    # start a new scope
             nc = NamingConvention.get()
             print (nc is sbnc)               # prints "True"
             print Name.of("R_arm_GEO").side  # prints "R"
@@ -27,7 +27,17 @@ class NamingConvention(object):
         print (nc is NoConvention)           # prints "True"
         print Name.of("R_arm_GEO").side      # raises UnknownComponentError
 
-    It is intended that every script using PyPhil opens a scope to run within.
+    NamingConvention implements a shorthand for opening a scope which is
+    available to all naming conventions, since those inherit from the class.
+    The previous example scope can be declared more succinctly as:
+
+        with SBConvention():
+            nc = NamingConvention.get()
+            print (nc is SBConvention)       # prints "True"
+            print Name.of("R_arm_GEO").side  # prints "R"
+
+    It is intended that every script using PyPhil Names opens a scope to run
+    within.
     """
     _current = None  # Set to NoConvention at the end of file
 
@@ -40,17 +50,21 @@ class NamingConvention(object):
         """
         return NamingConvention._current
 
-    @classmethod
-    def __call__(cls, nc):
+    def __call__(self):
         """
-        __call__ returns a new NamingConventionScope to be used with
-        the "with" statement construct. See the class documentation
-        above.
+        __call__ is a shorthand to open a new naming convention scope where
+        a naming convention is in effect. The implementation is available to
+        all naming conventions (which inherit from NamingConvention) so they
+        can be used as so:
 
-        :param nc: the naming convention to use for the new scope.
-        :return:   a NamingConventionScope representing the scope.
+            with SBConvention():
+                # The SBConvention naming convention is now in effect.
+                nc = NamingConvention.get()
+                print (nc == SBConvention)      # prints "True"
+
+        :return: a new naming convention scope, using this naming convention.
         """
-        return NamingConventionScope(nc)
+        return NamingConventionScope(self)
 
     def __str__(self):
         return self.__class__.__name__
@@ -101,6 +115,7 @@ class NamingConvention(object):
 class NamingConventionScope(object):
     """
     A NamingConventionScope defines the boundaries of a naming convention scope.
+    See the class documentation for NamingConvention for details.
 
     See https://docs.python.org/2.7/reference/compound_stmts.html#the-with-statement
     for documentation on how NamingConventionScope works with "with" statements.
@@ -108,6 +123,9 @@ class NamingConventionScope(object):
 
     def __init__(self, nc):
         self._nc = nc
+
+    def __str__(self):
+        return "NamingConventionScope({:s})".format(self._nc)
 
     def __enter__(self):
         self._prev = NamingConvention._current
