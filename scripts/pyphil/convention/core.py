@@ -1,7 +1,5 @@
 import re
 
-from pyphil.convention import NoConvention
-
 class NamingConvention(object):
     """
     NamingConvention is the base class for all naming conventions. Its class
@@ -17,7 +15,7 @@ class NamingConvention(object):
     NoConvention class. A naming convention can be registered for a specific
     block of code, a so-called scope. A scope can be declared as follows:
 
-        sbnc = SBConvention()                # a sample naming convention
+        sbnc = SBConvention                  # a sample naming convention
         with NamingConvention(sbnc):         # start a new scope
             nc = NamingConvention.get()
             print (nc is sbnc)               # prints "True"
@@ -26,12 +24,12 @@ class NamingConvention(object):
 
         # outside a scope
         nc = NamingConvention.get()
-        print (nc is NoConvention())         # prints "True"
+        print (nc is NoConvention)           # prints "True"
         print Name.of("R_arm_GEO").side      # raises UnknownComponentError
 
     It is intended that every script using PyPhil opens a scope to run within.
     """
-    _current = None
+    _current = None  # Set to NoConvention at the end of file
 
     @classmethod
     def get(cls):
@@ -53,6 +51,12 @@ class NamingConvention(object):
         :return:   a NamingConventionScope representing the scope.
         """
         return NamingConventionScope(nc)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __repr__(self):
+        return str(self)
 
     ###########################################
     # METHODS TO BE IMPLEMENTED BY SUBCLASSES #
@@ -93,8 +97,6 @@ class NamingConvention(object):
                             valid name.
         """
         raise NotImplementedError
-
-NamingConvention._current = NoConvention()
 
 class NamingConventionScope(object):
     """
@@ -185,3 +187,7 @@ class NameComposition(object):
                 by the associated naming convention.
         """
         raise NotImplementedError
+
+# Need to do this last since pyphil.convention.none depends on core
+from pyphil.convention.none import NoConvention
+NamingConvention._current = NoConvention

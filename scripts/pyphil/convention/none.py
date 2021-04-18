@@ -1,30 +1,15 @@
 from pyphil.errors import UnknownComponentError
-from pyphil.convention import NamingConvention, NameComposition
+from pyphil.convention.core import NamingConvention, NameComposition
 
 class NoConvention(NamingConvention):
     """
-    NoConvention is the default naming convention, that is none.
+    NoConvention is the default naming convention, that is, none.
     NoConvention defines no name components and names are considered
     valid if they are legal Maya names (see NameComposition.is_valid).
 
-    The only (intended) instance of NoConvention is
-
-        NoConvention.instance
-
-    which also is returned by NoConvention.__call__(), equivalent to
-
-        NoConvention()
+    NOTE: This class definition is shadowed by a variable declaration.
+          The variable "NoConvention" refers to an object of this class.
     """
-
-    instance = None
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def __call__(cls):
-        return cls.instance
-
-    def __str__(self):
-        return "<no convention>"
 
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
@@ -39,9 +24,10 @@ class NoConvention(NamingConvention):
     def compose(self, **unsupported):
         if len(unsupported) == 0:
             raise ValueError("The composition of zero components is undefined")
-        raise UnknownComponentError(NoConvention(), unsupported.keys())
+        raise UnknownComponentError(NoConvention, unsupported.keys())
 
-NoConvention.instance = NoConvention.__new__(NoConvention)
+# Shadow the class definition with an instance of it, thereby creating a singleton.
+NoConvention = NoConvention()
 
 class NoComposition(NameComposition):
 
@@ -58,7 +44,7 @@ class NoComposition(NameComposition):
     def replace(self, **unsupported):
         if len(unsupported) == 0:
             return self
-        raise UnknownComponentError(NoConvention(), unsupported.keys())
+        raise UnknownComponentError(NoConvention, unsupported.keys())
 
     def get_component(self, component):
-        raise UnknownComponentError(NoConvention(), component)
+        raise UnknownComponentError(NoConvention, component)

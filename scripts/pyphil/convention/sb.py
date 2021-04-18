@@ -1,5 +1,5 @@
 from pyphil.errors import UnknownComponentError
-from pyphil.convention import NamingConvention, NameComposition
+from pyphil.convention.core import NamingConvention, NameComposition
 
 class SBConvention(NamingConvention):
     """
@@ -25,29 +25,14 @@ class SBConvention(NamingConvention):
     are present, SBConvention will attempt to label each the best it can
     based on the possible values for <side>, <module>, and <type>.
 
-    The only (intended) instance of SBConvention is
-
-        SBConvention.instance
-
-    which also is returned by SBConvention.__call__(), equivalent to
-
-        SBConvention()
+    NOTE: This class definition is shadowed by a variable declaration.
+          The variable "SBConvention" refers to an object of this class.
     """
-
-    instance = None
 
     # TODO: Complete these sets
     sides   = {"R", "L", "C"}  # right, left, center; all uppercase
     modules = {"arm", "leg"}   # all lowercase
     types   = {"FK", "GEO", "GRP", "IK", "JNT"}  # all uppercase
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def __call__(cls):
-        return cls.instance
-
-    def __str__(self):
-        return "<sb convention>"
 
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
@@ -76,7 +61,8 @@ class SBConvention(NamingConvention):
             desc = str(desc)
         return SBName(str(side), str(module), str(basename), desc, str(type))
 
-SBConvention.instance = SBConvention.__new__(SBConvention)
+# Shadow the class definition with an instance of it, thereby creating a singleton.
+SBConvention = SBConvention()
 
 class SBName(NameComposition):
 
