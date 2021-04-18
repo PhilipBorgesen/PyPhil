@@ -133,7 +133,7 @@ class NamingConventionScope(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if NamingConvention._current != self._nc:
-            # A naming convention scope must not be closed before all its inner scopes.
+            # A naming convention scope must not be closed before any of its inner scopes.
             raise RuntimeError("Naming convention scope attempted closed before a child scope.")
 
         NamingConvention._current = self._prev

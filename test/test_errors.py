@@ -4,7 +4,7 @@ import pyphil
 from pyphil.errors import *
 import maya.OpenMaya as om
 
-class TestErrors(TestCase):
+class TestObjectErrors(TestCase):
 
     def test_NotExistError_string(self):
         pattern = "|*:test42"
@@ -34,6 +34,9 @@ class TestErrors(TestCase):
         error = clazz(identifier)
         self.assertIs(identifier, error.identifier)
         self.assertIn(expectedMsg, error.message)
+
+
+class TestUnknownComponentError(TestCase):
 
     def test_UnknownComponentError_one(self):
         convention = pyphil.NoConvention
