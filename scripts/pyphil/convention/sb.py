@@ -30,6 +30,10 @@ class SBConvention(NamingConvention):
     """
 
     # TODO: Complete these sets.
+    # Sets of known values for the <side>, <module> and <type> components.
+    # A name using a side, module, or type that is not in these sets will not
+    # be considered valid. The more complete these sets are, the better
+    # SBConvention is at splitting improper names into their true components.
     sides   = {"R", "L", "C"}  # right, left, center
     modules = {"arm", "leg", "spine", "neck", "head", "tail", "hand", "foot"}
     types   = {"bls", "ctrl", "fol", "geo", "Grp", "jnt", "msh", "loc", "pin", "srf"}
@@ -47,7 +51,7 @@ class SBConvention(NamingConvention):
 
     def compose(self, side=None, module=None, basename=None, desc=None, type=None, **unsupported):
         if len(unsupported) > 0:
-            raise UnknownComponentError(SBConvention(), unsupported.keys())
+            raise UnknownComponentError(SBConvention, unsupported.keys())
         # Ensure that values composed from scratch are valid
         if side is None:
             raise ValueError("<side> component is required")
@@ -79,6 +83,9 @@ class SBName(NameComposition):
     ############################
     # COMPONENT GETTER METHODS #
     ############################
+
+    # These getters implement lazy parsing of the name.
+    # Names are not split into components before they are needed.
 
     def side(self):
         if not self._decomposed:
@@ -115,13 +122,12 @@ class SBName(NameComposition):
         """
         _decompose parses self._name into individual components.
         """
-        # Record that name has been decomposed ahead of time
+        # Record ahead of time that name has been decomposed
         self._decomposed = True
 
         name = self._name
         starts = name.split("_", 3)
-        if len(starts) == 4:
-            # Fast path
+        if len(starts) == 4:  # Fast path, the most common
             self._side     = starts[0]
             self._module   = starts[1]
             self._basename = starts[2]
@@ -202,26 +208,26 @@ class SBName(NameComposition):
 
     def replace(self, side=None, module=None, basename=None, desc=None, type=None, **unsupported):
         if len(unsupported) > 0:
-            raise UnknownComponentError(SBConvention(), unsupported.keys())
+            raise UnknownComponentError(SBConvention, unsupported.keys())
         return SBName(
-            side=(self.side() if side is None else str(side)),
-            module=(self.module() if module is None else str(module)),
-            basename=(self.basename() if basename is None else str(basename)),
-            desc=(self.description() if desc is None else str(desc)),
-            type=(self.type() if type is None else str(type)),
+                side=(self.side()        if side     is None else str(side)),
+              module=(self.module()      if module   is None else str(module)),
+            basename=(self.basename()    if basename is None else str(basename)),
+                desc=(self.description() if desc     is None else str(desc)),
+                type=(self.type()        if type     is None else str(type)),
         )
 
     def get_component(self, component):
         getter = SBName._componentDispatch.get(component)
         if getter is None:
-            raise UnknownComponentError(SBConvention(), component)
+            raise UnknownComponentError(SBConvention, component)
         return getter()
 
     # a table mapping component names to getter methods
     _componentDispatch = {
-        "side": side,
-        "module": module,
+        "side":     side,
+        "module":   module,
         "basename": basename,
-        "desc": description,
-        "type": type,
+        "desc":     description,
+        "type":     type,
     }
