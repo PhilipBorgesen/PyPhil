@@ -53,12 +53,12 @@ class TestObject(TestCase):
     uuid = "11111111-1111-1111-1111-111111111111"
 
     def test_fromUUID_success_string(self):
-        self.impl_fromUUID_success(TestObject.uuid)
+        self.assert_fromUUID_success(TestObject.uuid)
 
     def test_fromUUID_success_muuid(self):
-        self.impl_fromUUID_success(om.MUuid(TestObject.uuid))
+        self.assert_fromUUID_success(om.MUuid(TestObject.uuid))
 
-    def impl_fromUUID_success(self, uuid):
+    def assert_fromUUID_success(self, uuid):
         obj = Object.fromName("unique")
         TestObject.setUUID(obj, uuid)
         obj2 = Object.fromUUID(uuid)

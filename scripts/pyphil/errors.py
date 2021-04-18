@@ -10,6 +10,9 @@ class NotExistError(ObjectError):
     """
     NotExistError is raised when an object or attribute does not exist
     or otherwise could not be identified or found.
+
+    Its identifier attribute holds the identifier for which no object
+    could be found, either a string or a OpenMaya MUuid.
     """
     def __init__(self, identifier):
         if isinstance(identifier, om.MUuid):
@@ -22,6 +25,9 @@ class NotExistError(ObjectError):
 class NotUniqueError(ObjectError):
     """
     NotUniqueError is raised when something cannot be identified uniquely.
+
+    Its identifier attribute holds the identifier for which multiple objects
+    were found, either a string or a OpenMaya MUuid.
     """
     def __init__(self, identifier):
         if isinstance(identifier, om.MUuid):
@@ -35,6 +41,9 @@ class UnknownComponentError(AttributeError):
     """
     UnknownComponentError is raised when one or more unknown or unsupported
     naming convention components are accessed or referred to.
+
+    The convention attribute holds the NamingConvention related to the error.
+    The components attribute is a list of the unknown/unsupported components.
     """
     def __init__(self, convention, components):
         self.convention = convention
@@ -46,9 +55,9 @@ class UnknownComponentError(AttributeError):
             self.components = [components]
 
         if len(self.components) == 1:
-            msg = "component '{:s}' is undefined for {:s}".format(components[0], convention)
+            msg = "component '{:s}' is undefined for {:s}".format(self.components[0], convention)
         else:
             components = ", ".join(["'"+str(c)+"'" for c in components])
-            msg = "components {:s} are undefined for {:s}".format(components, convention)
+            msg = "components {:s} are undefined for {:s}".format(self.components, convention)
 
         super(AttributeError, self).__init__(msg)
