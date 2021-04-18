@@ -10,6 +10,8 @@ def _query(identifier):
     The identifier may be a string name pattern or an OpenMaya MUuid object.
 
     :param identifier: is a name pattern or UUID uniquely identifying the node.
+    :returns:          a MObject uniquely matching the identifier.
+
     :raises NotExistError:  if no node was identified by the identifier.
     :raises NotUniqueError: if multiple nodes matched the identifier pattern.
     """
@@ -22,7 +24,7 @@ def _query(identifier):
         # If this succeeds the selection contains a reference to the node.
         selection.add(identifier)
         if selection.length() > 1:
-            raise NotUniqueError("identifier '{:s}' is not unique".format(identifier))
+            raise NotUniqueError(identifier)
         # Make ref point to the first (and only) node in the selection.
         selection.getDependNode(0, ref)
         return ref
@@ -31,14 +33,13 @@ def _query(identifier):
             raise e  # Unknown error occurred
 
     # pattern is not unique or matches no object. Figure out which it is.
-    if isinstance(identifier, om.MUuid):
-        raise NotExistError("object <{:s}> does not exist".format(identifier.asString()))
-    if len(cmds.ls(identifier)) == 0:
-        raise NotExistError("object '{:s}' does not exist".format(identifier))
-    else:
-        raise NotUniqueError("identifier '{:s}' is not unique".format(identifier))
 
-class Object:
+    if isinstance(identifier, om.MUuid) or len(cmds.ls(identifier)) == 0:
+        raise NotExistError(identifier)
+    else:
+        raise NotUniqueError(identifier)
+
+class Object(object):
     """
     Object references a Maya node without using its name. It supports certain
     convenience operations, most noticeably getting the current name of the
@@ -55,8 +56,9 @@ class Object:
         As a special case, if iterable is None, list returns the empty list.
 
         :return: a list of Objects representing the objects in iterable.
-        :raises ObjectError: if any of the patterns failed to identify a
-                             single, unique object.
+
+        :raises ObjectError: if any of the patterns failed to identify a single,
+                             unique object.
         """
         if iterable is None:
             return []
@@ -72,8 +74,9 @@ class Object:
 
         :param name: is a unique name or path to the object, either a string
                      or an object with a reasonable __str__ implementation.
-        :return: an Object representing the object.
-        :raises NotExistError: if no object exist by the given name.
+        :return:     an Object representing the object.
+
+        :raises NotExistError:  if no object exist by the given name.
         :raises NotUniqueError: if more than one object is identified by name.
         """
         if isinstance(name, Object):
@@ -86,7 +89,8 @@ class Object:
         fromUUID returns an Object referencing the object with the given uuid.
 
         :param uuid: is the universally unique identifier of the object.
-        :returns: an Object representing the object.
+        :returns:    an Object representing the object.
+
         :raises NotExistError: if no object exist with the given uuid.
         """
         if isinstance(uuid, str):
@@ -154,7 +158,7 @@ class Object:
         but neither is "", the name actually held by the world object.
 
         :param string: if True, instead returns the name as string.
-        :returns: a Name describing the long name of the object.
+        :returns:      a Name describing the long name of the object.
         """
         node = self._node
         if node is None:
