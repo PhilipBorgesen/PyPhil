@@ -19,10 +19,10 @@ class TestNoConvention(TestCase):
         self.assertEqual(name, n.name())
 
     def test_decompose_stringlike(self):
-        name = None  # str(None) == "None"
+        name = 42  # str(42) == "42"
         n = NoConvention.decompose(name)
         self.assertIsInstance(n, NameComposition)
-        self.assertEqual("None", n.name())
+        self.assertEqual("42", n.name())
 
     def test_decompose_emptyString(self):
         name = ""

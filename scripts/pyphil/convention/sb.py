@@ -15,10 +15,11 @@ class SBConvention(NamingConvention):
     by SBConvention as well.
 
     <basename> is a single word that may consist of the letters a-z, A-Z,
-    and the digits 0-9.
+    and the digits 0-9. Underscores are NOT permitted.
 
     <desc> is optional. When present it consists of one or more letters a-z,
-    A-Z, underscores, and the digits 0-9.
+    A-Z, underscores, and the digits 0-9. It may not start nor end with
+    underscore.
 
     When a component is missing, the trailing underscore should also be
     absent. When fewer than four components (the minimum for a valid name)
@@ -34,9 +35,12 @@ class SBConvention(NamingConvention):
     # A name using a side, module, or type that is not in these sets will not
     # be considered valid. The more complete these sets are, the better
     # SBConvention is at splitting improper names into their true components.
-    sides   = {"R", "L", "C"}  # right, left, center
+    #
+    # <side> and <module> names MAY NOT contain underscores.
+    # <type> names MAY contain underscores.
+    sides   = {"R", "L", "C", "T", "B"}
     modules = {"arm", "leg", "spine", "neck", "head", "tail", "hand", "foot"}
-    types   = {"bls", "ctrl", "fol", "geo", "Grp", "jnt", "msh", "loc", "pin", "srf"}
+    types   = {"bls", "ctrl", "FK_ctrl", "fol", "geo", "Grp", "IK_ctrl", "jnt", "msh", "loc", "pin", "srf"}
 
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
@@ -63,7 +67,7 @@ class SBConvention(NamingConvention):
             raise ValueError("<type> component is required")
         if desc is not None:
             desc = str(desc)
-        return SBName(str(side), str(module), str(basename), desc, str(type))
+        return SBName(None, str(side), str(module), str(basename), desc, str(type))
 
 # Shadow the class definition with an instance of it, thereby creating a singleton.
 SBConvention = SBConvention()
@@ -88,35 +92,54 @@ class SBName(NameComposition):
     # Names are not split into components before they are needed.
 
     def side(self):
+        """
+        :return: <side> component or None if missing
+        """
         if not self._decomposed:
             self._decompose()
         return self._side
 
     def module(self):
+        """
+        :return: <module> component or None if missing
+        """
         if not self._decomposed:
             self._decompose()
         return self._module
 
     def basename(self):
+        """
+        :return: <basename> component or None if missing
+        """
         if not self._decomposed:
             self._decompose()
         return self._basename
 
     def description(self):
+        """
+        :return: <desc> component or None if not set
+        """
         if not self._decomposed:
             self._decompose()
         return self._desc
 
     def type(self):
+        """
+        :return: <type> component or None if missing
+        """
         if not self._decomposed:
             self._decompose()
         return self._type
 
     # Generate lowercase versions of the fixed component sets
     # such that they can be used to aid decomposition.
-    _sides   = {s.lower() for s in SBConvention.sides}
-    _modules = {m.lower() for m in SBConvention.modules}
-    _types   = {t.lower() for t in SBConvention.types}
+    _sides     = {s.lower() for s in SBConvention.sides}
+    _modules   = {m.lower() for m in SBConvention.modules}
+    _types     = {t.lower() for t in SBConvention.types}
+    # _hardTypes contain all <type> values that contain underscores,
+    # longest values first. Parsing will select the longest valid match.
+    _hardTypes = [t for t in _types if "_" in t]
+    _hardTypes.sort(key=lambda t: len(t), reverse=True)  # sort by length
 
     def _decompose(self):
         """
@@ -125,46 +148,65 @@ class SBName(NameComposition):
         # Record ahead of time that name has been decomposed
         self._decomposed = True
 
-        name = self._name
+        name = self._name  # for ease of reference
+
+        # Split out any <type> component containing underscore(s).
+        # The match is greedy, so we take the longest suffix that
+        # match a known value.
+        small = name.lower()
+        for t in SBName._hardTypes:
+            if small.endswith(t):
+                if len(name) == len(t):
+                    self._type = name  # name is only <type>
+                    return
+                before = -len(t)-1
+                if name[before] == "_":
+                    name, semi, self._type = name[:before], "_", name[before+1:]
+                    break
+        else:  # split out what is expectedly the <type>
+            name, semi, self._type = name.rpartition("_")
+
         starts = name.split("_", 3)
-        if len(starts) == 4:  # Fast path, the most common
+        if len(starts) >= 3:  # Fast path, the most common
             self._side     = starts[0]
             self._module   = starts[1]
             self._basename = starts[2]
-            desc, _, _type = starts[3].rpartition("_")
-            if desc == "":
-                desc = None
-            self._desc = desc
-            self._type = _type
+            if len(starts) == 4:
+                self._desc = starts[3]
             return
 
         # Valid components are missing; decompose on a best effort basis
         # based on the records of valid values for side, module, and type.
 
-        # side
+        if semi == "":  # the only component is currently assigned to <type>
+            starts = []
+
+        # Undo any invalid <type> selection
+        if self._type.lower() in SBName._types:
+            if len(starts) == 0:
+                return
+        else:
+            starts.append(self._type)
+            self._type = None
+
+        # Verify potential <side> value
         if starts[0].lower() in SBName._sides:
             self._side = starts[0]
             if len(starts) == 1:
                 return
             starts = starts[1:]
 
-        # module
+        # Verify potential <module> value
         if starts[0].lower() in SBName._modules:
             self._module = starts[0]
             if len(starts) == 1:
                 return
             starts = starts[1:]
 
-        # type
-        if starts[-1].lower() in SBName._types:
-            self._type = starts[-1]
-            if len(starts) == 1:
-                return
-            starts = starts[:-1]
-
         # basename and description components are pure guesses
         self._basename = starts[0]
-        self._desc = "_".join(starts[1:])
+        if len(starts) > 1:
+            self._desc = "_".join(starts[1:])
 
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
@@ -196,11 +238,11 @@ class SBName(NameComposition):
         if self.type() not in SBConvention.types:
             return False
         bn = self.basename()
-        if bn is None or "_" in bn:
+        if bn is None or bn == "" or "_" in bn:
             return False
         desc = self.description()
         if desc is not None:
-            if len(desc) == 0:
+            if desc == "":
                 return False  # should be absent instead
             if desc[0] == "_" or desc[-1] == "_":
                 return False  # should not start or end with underscore
@@ -221,7 +263,7 @@ class SBName(NameComposition):
         getter = SBName._componentDispatch.get(component)
         if getter is None:
             raise UnknownComponentError(SBConvention, component)
-        return getter()
+        return getter(self)
 
     # a table mapping component names to getter methods
     _componentDispatch = {

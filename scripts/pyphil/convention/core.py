@@ -174,7 +174,6 @@ class NameComposition(object):
         """
         return NameComposition._mayaNameRegex.match(self.name()) is not None
 
-
     def name(self):
         """
         :return: the name described by self
