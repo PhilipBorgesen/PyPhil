@@ -186,8 +186,8 @@ class SBName(NameComposition):
             self._name = "_".join(components)
         return self._name
 
-    def is_valid(self):
-        if not super(SBName, self).is_valid():  # Check legal Maya name
+    def isValid(self):
+        if not super(SBName, self).isValid():  # Check legal Maya name
             return False
         if self.side() not in SBConvention.sides:
             return False
@@ -217,7 +217,7 @@ class SBName(NameComposition):
                 type=(self.type()        if type     is None else str(type)),
         )
 
-    def get_component(self, component):
+    def getComponent(self, component):
         getter = SBName._componentDispatch.get(component)
         if getter is None:
             raise UnknownComponentError(SBConvention, component)

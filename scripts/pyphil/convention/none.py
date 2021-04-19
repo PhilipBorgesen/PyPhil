@@ -5,7 +5,7 @@ class NoConvention(NamingConvention):
     """
     NoConvention is the default naming convention, that is, none.
     NoConvention defines no name components and names are considered
-    valid if they are legal Maya names (see NameComposition.is_valid).
+    valid if they are legal Maya names (see NameComposition.isValid).
 
     NOTE: This class definition is shadowed by a variable declaration.
           The variable "NoConvention" refers to an object of this class.
@@ -46,5 +46,5 @@ class NoComposition(NameComposition):
             return self
         raise UnknownComponentError(NoConvention, unsupported.keys())
 
-    def get_component(self, component):
+    def getComponent(self, component):
         raise UnknownComponentError(NoConvention, component)

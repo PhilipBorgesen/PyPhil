@@ -150,16 +150,16 @@ class NameComposition(object):
     # Legal node names begin with any character from a-z or A-Z and an
     # underscore, followed by a sequence of characters from a-z or A-Z,
     # underscore or numerals.
-    _mayaNameRegex = re.compile(r"^[a-zA-Z_][a-zA-Z_0-9]*$")
+    _mayaNameRegex = re.compile(r"^[a-zA-Z_][a-zA-Z_0-9]*\Z")
 
     ##########################################
     # METHODS TO BE OVERRIDDEN BY SUBCLASSES #
     ##########################################
 
-    def is_valid(self):
+    def isValid(self):
         """
-        is_valid returns whether the name described by self is valid according
-        to the naming convention that self operates under. By default is_valid
+        isValid returns whether the name described by self is valid according
+        to the naming convention that self operates under. By default isValid
         returns True if self.name() is a legal Maya node name.
 
         Legal node names begin with any character from a-z or A-Z and an
@@ -172,7 +172,8 @@ class NameComposition(object):
         :returns: True if self.name() is valid according to the naming
                   convention associated with self.
         """
-        return NameComposition._mayaNameRegex.match(self.name())
+        return NameComposition._mayaNameRegex.match(self.name()) is not None
+
 
     def name(self):
         """
@@ -194,9 +195,9 @@ class NameComposition(object):
         """
         raise NotImplementedError
 
-    def get_component(self, component):
+    def getComponent(self, component):
         """
-        get_component returns the string value of the given component name.
+        getComponent returns the string value of the given component name.
 
         :param component: name of the component to return
         :return:          the value of the given component, or None
