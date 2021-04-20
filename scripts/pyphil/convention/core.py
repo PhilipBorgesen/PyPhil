@@ -140,6 +140,14 @@ class NamingConventionScope(object):
         return False  # do not suppress a potential exception
 
 class NameComposition(object):
+    """
+    A NameComposition represents a legal Maya name broken into components based
+    on a naming convention. The subclasses of NamingConvention return objects
+    of NameComposition subclasses when their compose or decompose methods are
+    called.
+
+    NameComposition and its subclasses behaves as immutable.
+    """
 
     def __str__(self):
         """

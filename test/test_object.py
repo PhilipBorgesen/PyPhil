@@ -34,6 +34,11 @@ class TestObject(TestCase):
         obj = Object.fromName("unique")
         self.assertIsInstance(obj, Object)
 
+    def test_fromName_world_success(self):
+        obj = Object.fromName("<world>")
+        self.assertIsInstance(obj, Object)
+        self.assertEqual(obj, Object.world())
+
     def test_fromName_notFound(self):
         with self.assertRaises(NotExistError) as _:
             Object.fromName("doesNotExist")
@@ -184,7 +189,7 @@ class TestObject(TestCase):
 
     @classmethod
     def setUUID(cls, obj, uuid):
-        if isinstance(uuid, str):
+        if isinstance(uuid, basestring):
             uuid = om.MUuid(uuid)
         obj._node.setUuid(uuid)
 

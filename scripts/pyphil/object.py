@@ -44,6 +44,21 @@ class Object(object):
     Object references a Maya node without using its name. It supports certain
     convenience operations, most noticeably getting the current name of the
     potentially renamed or moved object for use with the Maya Python API.
+
+    Example:
+
+        from pyphil import Object
+        import maya.cmds as cmds
+
+        sphere = cmds.sphere(name="mySphere")[0]
+        obj    = Object.fromName(sphere)
+        name   = cmds.rename(sphere, "roundThing")
+        group  = cmds.group(name, name="group", world=True)
+
+        print obj.name()    # prints "|group|roundThing"
+        print obj           # prints "|group|roundThing"
+        print obj.parent()  # prints "|group"
+
     """
 
     @classmethod
@@ -72,6 +87,8 @@ class Object(object):
         a single object uniquely. Any name value given is attempted converted to
         string before use.
 
+        As a special case, if name is "<world>" then Object.world() is returned.
+
         :param name: is a unique name or path to the object, either a string
                      or an object with a reasonable __str__ implementation.
         :return:     an Object representing the object.
@@ -81,7 +98,10 @@ class Object(object):
         """
         if isinstance(name, Object):
             return name
-        return Object(_query(str(name)))
+        name = str(name)
+        if name == "<world>":
+            return Object.world()
+        return Object(_query(name))
 
     @classmethod
     def fromUUID(cls, uuid):
