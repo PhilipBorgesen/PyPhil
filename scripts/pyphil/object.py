@@ -96,7 +96,7 @@ class Object(object):
         if isinstance(uuid, str):
             uuid = om.MUuid(uuid)
         elif not isinstance(uuid, om.MUuid):
-            raise ValueError("uuid must be a string or of type maya.OpenMaya.MUuid")
+            raise ValueError("uuid must be a string or of type {:s}".format(om.MUuid.__class__))
         return Object(_query(uuid))
 
     @classmethod

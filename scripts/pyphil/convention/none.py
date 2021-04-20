@@ -23,7 +23,7 @@ class NoConvention(NamingConvention):
 
     def compose(self, **unsupported):
         if len(unsupported) == 0:
-            raise ValueError("The composition of zero components is undefined")
+            raise ValueError("the composition of zero name components is undefined")
         raise UnknownComponentError(NoConvention, unsupported.keys())
 
 # Shadow the class definition with an instance of it, thereby creating a singleton.

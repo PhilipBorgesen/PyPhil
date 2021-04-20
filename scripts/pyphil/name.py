@@ -76,7 +76,7 @@ class Name(object):
         if isinstance(name, Name):
             return name
         if not isinstance(name, str):
-            raise ValueError("non-string name passed")
+            raise ValueError("cannot create Name from non-string type (was type: {:s})".format(name.__class__))
         return Name(name)
 
     @classmethod
@@ -86,7 +86,7 @@ class Name(object):
 
         Any arguments beyond parent, short, namespace, base, and nc are
         interpreted as naming convention components. If nc is passed, that
-        argument is assumed to be a naming convention that can be used to
+        argument is assumed to be a NamingConvention that can be used to
         compose a name from the components. If nc is None then the currently
         active naming convention will be retrieved via NamingConvention.get().
 
@@ -101,22 +101,22 @@ class Name(object):
         :param parent:     A string or Name representing a parent in the DAG
                            path of the returned Name. If the short argument
                            denotes no parent then this will be the direct
-                           parent of the Name.
+                           parent of the returned Name.
         :param short:      A string or Name representing the name of the
                            object, potentially including a namespace and/or
-                           DAG node parent.
+                           DAG node parents.
         :param namespace:  A string or Namespace representing the namespace
                            part of the object name.
         :param base:       A string containing the name itself with no parents
-                           or namespaces. Non-strings will be converted to
-                           string using the built-in str() function.
+                           or namespaces. A NameComposition created by a
+                           NamingConvention may also be passed.
         :param nc:         A PyPhil NamingConvention to use for composing a
                            base name from other given naming convention
                            components. If None and neither short nor base
                            arguments are given then nc will be set to the
                            result of NamingConvention.get().
         :param components: Naming convention components that nc.compose() can
-                           be called with to produce a base name if both the
+                           be called with to produce a base name, if both the
                            short and base arguments are None.
         :return:           A Name object built from the given parts.
         """
@@ -136,13 +136,18 @@ class Name(object):
         if base is not None:
             if len(components) > 0:
                 raise ValueError("mutually exclusive arguments 'base' and name components passed")
-            if not isinstance(base, NameComposition):
-                base = str(base)
-        else:
+            if isinstance(base, str):
+                if "|" in base:
+                    raise ValueError("invalid 'base' argument; path separator '|' found in '{:s}'".format(base))
+            elif not isinstance(base, NameComposition):
+                raise ValueError("invalid 'base' argument; only string or NameComposition allowed (was type: {:s})".format(base.__class__))
+        elif len(components) > 0:
             # Construct base from components
             if nc is None:
                 nc = NamingConvention.get()
             base = nc.compose(**components)
+        else:
+            raise ValueError("failed to construct Name: either 'short', 'base', or name components must be passed")
 
         # Construct name
         if parent is not None:

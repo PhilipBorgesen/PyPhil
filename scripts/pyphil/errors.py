@@ -55,9 +55,9 @@ class UnknownComponentError(AttributeError):
             self.components = [components]
 
         if len(self.components) == 1:
-            msg = "component '{:s}' is undefined for {:s}".format(self.components[0], convention)
+            msg = "component '{:s}' is undefined for {:s} naming convention".format(self.components[0], convention)
         else:
             components = ", ".join(["'"+str(c)+"'" for c in components])
-            msg = "components {:s} are undefined for {:s}".format(self.components, convention)
+            msg = "components {:s} are undefined for {:s} naming convention".format(self.components, convention)
 
         super(AttributeError, self).__init__(msg)
