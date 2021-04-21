@@ -25,11 +25,6 @@ class TestSBConvention(TestCase):
         self.assertIsInstance(n, NameComposition)
         self.assertEqual("42", n.name())
 
-    def test_decompose_emptyString(self):
-        name = ""
-        with self.assertRaises(ValueError):
-            SBConvention.decompose(name)
-
     def test_compose_unknown(self):
         with self.assertRaises(UnknownComponentError):
             SBConvention.compose(unknown="value")

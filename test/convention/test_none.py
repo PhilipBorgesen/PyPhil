@@ -27,11 +27,6 @@ class TestNoConvention(TestCase):
         self.assertIsInstance(n, NameComposition)
         self.assertEqual("42", n.name())
 
-    def test_decompose_emptyString(self):
-        name = ""
-        with self.assertRaises(ValueError):
-            NoConvention.decompose(name)
-
     def test_compose_any(self):
         with self.assertRaises(UnknownComponentError):
             NoConvention.compose(test="unsupported")

@@ -49,8 +49,6 @@ class SBConvention(NamingConvention):
     def decompose(self, name):
         if isinstance(name, SBName):
             return name
-        if name == "":
-            raise ValueError("invalid name ''; empty string forbidden")
         return SBName(str(name))
 
     def compose(self, side=None, module=None, basename=None, desc=None, type=None, **unsupported):
@@ -149,6 +147,10 @@ class SBName(NameComposition):
         self._decomposed = True
 
         name = self._name  # for ease of reference
+
+        if name == "":
+            self._basename = ""
+            return
 
         # Split out any <type> component containing underscore(s).
         # The match is greedy, so we take the longest suffix that
