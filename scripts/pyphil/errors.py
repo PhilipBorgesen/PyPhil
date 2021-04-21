@@ -58,6 +58,9 @@ class UnknownComponentError(AttributeError):
             msg = "component '{:s}' is undefined for {:s} naming convention".format(self.components[0], convention)
         else:
             components = ", ".join(["'"+str(c)+"'" for c in components])
-            msg = "components {:s} are undefined for {:s} naming convention".format(self.components, convention)
+            msg = "components {:s} are undefined for {:s} naming convention".format(components, convention)
+
+        if convention.isNoConvention():
+            msg += "; has a NamingConventionScope been setup?"
 
         super(AttributeError, self).__init__(msg)

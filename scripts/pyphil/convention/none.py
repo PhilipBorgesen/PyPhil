@@ -11,6 +11,9 @@ class NoConvention(NamingConvention):
           The variable "NoConvention" refers to an object of this class.
     """
 
+    def isNoConvention(self):
+        return True
+
     #########################################
     # IMPLEMENTATIONS OF BASE CLASS METHODS #
     #########################################

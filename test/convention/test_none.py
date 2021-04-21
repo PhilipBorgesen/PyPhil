@@ -12,6 +12,9 @@ class TestNoConvention(TestCase):
             with NoConvention():
                 self.assertIs(NoConvention, NamingConvention.get())
 
+    def test_isNoConvention(self):
+        self.assertTrue(NoConvention.isNoConvention())
+
     def test_decompose_string(self):
         name = "test42"
         n = NoConvention.decompose(name)

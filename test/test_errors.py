@@ -55,3 +55,5 @@ class TestUnknownComponentError(TestCase):
         self.assertItemsEqual(components, error.components)
         for component in components:
             self.assertIn("'" + component + "'", error.message)
+        if convention == pyphil.NoConvention:
+            self.assertIn("NamingConventionScope", error.message)

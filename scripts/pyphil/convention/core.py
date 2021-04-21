@@ -72,6 +72,12 @@ class NamingConvention(object):
     def __repr__(self):
         return str(self)
 
+    def isNoConvention(self):
+        """
+        :return: True if self is NoConvention
+        """
+        return False
+
     ###########################################
     # METHODS TO BE IMPLEMENTED BY SUBCLASSES #
     ###########################################

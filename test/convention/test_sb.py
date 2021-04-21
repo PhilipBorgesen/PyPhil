@@ -10,6 +10,9 @@ class TestSBConvention(TestCase):
         with SBConvention():
             self.assertIs(SBConvention, NamingConvention.get())
 
+    def test_isNoConvention(self):
+        self.assertFalse(SBConvention.isNoConvention())
+
     def test_decompose_string(self):
         name = "R_arm_shoulder_geo"
         n = SBConvention.decompose(name)
