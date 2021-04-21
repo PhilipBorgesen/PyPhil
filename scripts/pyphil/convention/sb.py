@@ -1,6 +1,8 @@
 from pyphil.errors import UnknownComponentError
 from pyphil.convention.core import NamingConvention, NameComposition
 
+_none = object()  # a special marker for when no argument is passed
+
 class SBConvention(NamingConvention):
     """
     SBConvention denotes the following naming scheme:
@@ -250,15 +252,15 @@ class SBName(NameComposition):
                 return False  # should not start or end with underscore
         return True
 
-    def replace(self, side=None, module=None, basename=None, desc=None, type=None, **unsupported):
+    def replace(self, side=_none, module=_none, basename=_none, desc=_none, type=_none, **unsupported):
         if len(unsupported) > 0:
             raise UnknownComponentError(SBConvention, unsupported.keys())
         return SBName(
-                side=(self.side()        if side     is None else str(side)),
-              module=(self.module()      if module   is None else str(module)),
-            basename=(self.basename()    if basename is None else str(basename)),
-                desc=(self.description() if desc     is None else str(desc)),
-                type=(self.type()        if type     is None else str(type)),
+                side=(self.side()        if side     is _none else (str(side)      if side     is not None else None)),
+              module=(self.module()      if module   is _none else (str(module)    if module   is not None else None)),
+            basename=(self.basename()    if basename is _none else (str(basename)  if basename is not None else None)),
+                desc=(self.description() if desc     is _none else (str(desc)      if desc     is not None else None)),
+                type=(self.type()        if type     is _none else (str(type)      if type     is not None else None)),
         )
 
     def getComponent(self, component):

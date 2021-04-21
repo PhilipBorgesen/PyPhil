@@ -200,6 +200,8 @@ class NameComposition(object):
         same components except those given as arguments. Components listed
         by arguments will be replaced by the associated argument values.
 
+        Any component set to None will be absent in the result.
+
         :param components: key-value arguments listing component replacements.
         :return:           a NameComposition describing the mutated name.
 

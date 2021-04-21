@@ -169,8 +169,8 @@ class TestSBName(TestCase):
 
     def test_replace_basic(self):
         n   =    SBName(side="R", module="arm", basename="shoulder",                     type="geo")
-        r   = n.replace(side="L",                                    desc="description")
-        exp =    SBName(side="L", module="arm", basename="shoulder", desc="description", type="geo")
+        r   = n.replace(side="L",               basename=None,       desc="description")
+        exp =    SBName(side="L", module="arm",                      desc="description", type="geo")
         self.assertEqual(exp.name(), r.name())
         self.assertIsInstance(r, SBName)
 
@@ -184,6 +184,12 @@ class TestSBName(TestCase):
         n   =    SBName(side="R", module="arm", basename="shoulder", desc="desc",        type="geo")
         r   = n.replace(side="L", module="leg", basename="knee",     desc="description", type="Grp")
         exp =    SBName(side="L", module="leg", basename="knee",     desc="description", type="Grp")
+        self.assertEqual(exp.name(), r.name())
+
+    def test_replace_remove_all(self):
+        n   =    SBName(side="R", module="arm", basename="shoulder", desc="desc",        type="geo")
+        r   = n.replace(side=None, module=None, basename=None,       desc=None,          type=None)
+        exp =    SBName()
         self.assertEqual(exp.name(), r.name())
 
     def test_replace_missing(self):
