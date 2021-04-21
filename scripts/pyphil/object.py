@@ -99,7 +99,7 @@ class Object(object):
         if isinstance(name, Object):
             return name
         name = str(name)
-        if name == "<world>":
+        if name == "<world>" or name == ":<world>":
             return Object.world()
         return Object(_query(name))
 

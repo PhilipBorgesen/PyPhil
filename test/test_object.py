@@ -39,6 +39,11 @@ class TestObject(TestCase):
         self.assertIsInstance(obj, Object)
         self.assertEqual(obj, Object.world())
 
+    def test_fromName_world_ns_success(self):
+        obj = Object.fromName(":<world>")
+        self.assertIsInstance(obj, Object)
+        self.assertEqual(obj, Object.world())
+
     def test_fromName_notFound(self):
         with self.assertRaises(NotExistError) as _:
             Object.fromName("doesNotExist")
