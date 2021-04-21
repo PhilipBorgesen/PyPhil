@@ -144,6 +144,10 @@ class TestSBName(TestCase):
         n = SBName(desc="blah")
         self.assertEqual("blah", n.getComponent("desc"))
 
+    def test_getComponent_desc_alias(self):
+        n = SBName(desc="blah")
+        self.assertEqual("blah", n.getComponent("description"))
+
     def test_getComponent_desc_unset(self):
         n = SBName(side="R", module="arm", basename="shoulder", type="geo")
         self.assertIsNone(n.getComponent("desc"))

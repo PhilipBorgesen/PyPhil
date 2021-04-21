@@ -274,4 +274,6 @@ class SBName(NameComposition):
         "basename": basename,
         "desc":     description,
         "type":     type,
+        # Aliases
+        "description": description,
     }
