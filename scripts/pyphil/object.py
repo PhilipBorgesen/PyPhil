@@ -91,7 +91,7 @@ class Object(object):
 
         :param name: is a unique name or path to the object, either a string
                      or an object with a reasonable __str__ implementation.
-        :return:     an Object representing the object.
+        :returns:    an Object representing the object.
 
         :raises NotExistError:  if no object exist by the given name.
         :raises NotUniqueError: if more than one object is identified by name.
@@ -173,9 +173,13 @@ class Object(object):
         parameter is True a string of the shortest possible unique name
         is returned instead.
 
+        If string=False and self represents a DAG node then the returned
+        Name will be rooted at Name.world, that is self.name().root() ==
+        Name.world. In other words, the return value will be a full path.
+
         As a special case, if string=True and self represents the world
-        object then name returns "<world>". This is not a valid name
-        but neither is "", the name actually held by the world object.
+        object then name returns "<world>". This is not a legal name but
+        neither is "", the actual DAG path to the world object.
 
         :param string: if True, instead returns the name as string.
         :returns:      a Name describing the long name of the object.
@@ -198,7 +202,7 @@ class Object(object):
         if string:
             return n
 
-        return Name.of(n)
+        return Name(n)  # skip checks done by Name.of
 
     def uuid(self):
         """
