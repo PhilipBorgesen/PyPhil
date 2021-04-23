@@ -14,15 +14,17 @@ class Namespace(object):
         if ns is None:
             return Namespace.root
         if not isinstance(ns, basestring):
-            raise ValueError("cannot create Namespace from non-string type (was type: {:s})".format(ns.__class__))
+            raise ValueError("cannot create Namespace from string and None types (was type: {:s})".format(ns.__class__))
         return Namespace(ns)
 
     @classmethod
-    def join(cls, nc=None, *names):
+    def join(cls, *namespaces):
         pass
 
-    def __init__(self, ns):
-        self._ns = ns
+    def __init__(self, ns=None, parent=_none, name=None):
+        self._ns     = ns
+        self._parent = parent
+        self._name   = name
 
     def __str__(self):
         return self.str()
@@ -33,40 +35,46 @@ class Namespace(object):
     def str(self):
         return self._ns
 
-    def __eq__(self, other):
-        pass
-
-    def __ne__(self, other):
-        x = self == other
-        if x is not NotImplemented:
-            return not x
-        return NotImplemented
-
-    def name(self):
+    def hierarchy(self):
         pass
 
     def parent(self):
         pass
 
-    def split(self, root=False):
+    def hasParent(self):
         pass
-
-    def isValid(self, name):
-        True
 
     def depth(self):
         pass
 
-    def __add__(self, other):
+    def name(self):
         pass
 
-    def __truediv__(self, other):
+    def isValid(self, name):
+        return True
+
+    def split(self):
+        pass
+
+    def splitRoot(self):
         pass
 
     def isRoot(self):
         return self._ns == ""
 
-Namespace.root = Namespace("")
+    def __eq__(self, other):
+        pass
+
+    def __ne__(self, other):
+        pass
+
+    def __cmp__(self, other):
+        pass
+
+    def __hash__(self):
+        pass
+
+Namespace.root = Namespace(ns="", parent=None, name="")
 
 # The different degrees to which a Name can be decomposed
 _unsplit     = 0
@@ -95,6 +103,17 @@ class Name(object):
     world = None  # Initialized after the Name class definition
 
     @classmethod
+    def sanitize(cls, name):
+        """
+        sanitize removes all superfluous root namespace declarations from the
+        given string name.
+
+        :param name: the string to sanitize
+        :return:     the sanitized string
+        """
+        return _rootNsPattern.sub(name, "")
+
+    @classmethod
     def of(cls, name):
         """
         of returns a Name representing the given name, which must be a string,
@@ -112,12 +131,11 @@ class Name(object):
         """
         if isinstance(name, Name):
             return name
+        if isinstance(name, basestring):
+            return Name(Name.sanitize(name))
         if isinstance(name, NameComposition):
             return Name(state=_decomposed, namespace=Namespace.root, base=name, depth=0)
-        if not isinstance(name, basestring):
-            raise ValueError("cannot create Name from non-string type (was type: {:s})".format(name.__class__))
-        name = _rootNsPattern.sub(name, "")  # remove superfluous root namespaces
-        return Name(name)
+        raise ValueError("can only create Name from string or NameComposition types (was type: {:s})".format(name.__class__))
 
     @classmethod
     def build(cls, parent=None, short=None, namespace=None, base=None, nc=None, **components):
@@ -215,23 +233,36 @@ class Name(object):
         :param names: list of DAG path names to join
         :return:      A Name object representing the combined path.
         """
-        n = len(names)
-        if n == 0:
-            return None
-        if n == 1:
-            return Name.of(names[0])
+        if len(names) == 0:
+            raise ValueError("Name.join called without any arguments")
 
-        # last = names[-1]
-        # if isinstance(last, Name):
-        #     if last.hasParent():
-        #
-        # elif isinstance(last, NameComposition):
-        #
-        # elif isinstance(last, basestring):
-        #
-        # else:
+        ls, worldRoot = [], False
+        for i in range(len(names)):
+            n = names[i]
+            if isinstance(n, basestring):
+                n = Name.sanitize(n)
+            elif isinstance(n, Name):
+                n = n.str()
+            elif isinstance(n, NameComposition):
+                n = n.name()
+            else:
+                raise ValueError("can only join Name, string, or NameComposition types (argument #{:d} was type: {:s})".format(i+1, n.__class__))
 
-        raise NotImplementedError  # TODO
+            if n == "<world>":
+                if i == 0:
+                    worldRoot = True
+                continue
+            if not n.startswith("|"):
+                ls.append("|")  # relative name
+            ls.append(n)
+
+        if len(ls) == 0:
+            return Name.world
+
+        if ls[0] == "|" and not worldRoot:
+            ls.pop(0)
+
+        return Name("".join(ls))
 
     def __init__(self, name=None, state=_unsplit, root=None, parent=None, short=None, namespace=None, base=None, depth=-1):
         self._state     = state      # The degree to which name or short has been decomposed (int)
@@ -282,6 +313,42 @@ class Name(object):
             self._name = name
         return self._name
 
+    def isFull(self):
+        """
+        isFull returns True if self is a DAG path rooted at the world object,
+        that is has a string representation starting with '|'.
+
+        Examples:
+            Name.of("|name").isFull()    == True
+            Name.of("name").isFull()     == False
+            Name.of("|ns:name").isFull() == True
+            Name.of("ns:name").isFull()  == False
+            Name.world.isFull()          == False
+
+        Name.world.isFull() returns False because Name.world isn't a DAG path.
+
+        :returns: True if self denotes a full path rooted at the world object.
+        """
+        return self.str().startswith("|")
+
+    def relative(self):
+        """
+        relative returns a Name corresponding to the longest subpath of self
+        that does not have Name.world at its root. If self == Name.world
+        then relative returns None.
+
+        Examples:
+            Name.of("|foo|bar").relative() == Name.of("foo|bar")
+            Name.of("foo|bar").relative()  == Name.of("foo|bar")
+            Name.world.relative()          == None
+
+        :return: A Name of the longest subpath not rooted at the world.
+        """
+        root, subpath = self.splitRoot()
+        if root == Name.world:
+            return subpath
+        return self
+
     def root(self):
         """
         root returns the first part of self's DAG path as Name.
@@ -303,6 +370,29 @@ class Name(object):
                 # Find root without creating parents
                 self.splitRoot()  # sets self._root
         return self._root
+
+    def paths(self):
+        """
+        paths returns a list of all self's subpaths that start at self.root().
+
+        Example:
+
+            paths = Name.of("|a|ns:sample|path").paths()
+            len(paths) == 4
+            paths[0]   == Name.world
+            paths[1]   == Name.of("|a")
+            paths[2]   == Name.of("|a|ns:sample")
+            paths[3]   == Name.of("|a|ns:sample|path")
+
+        :returns: a list of all subpaths starting at self.root()
+        """
+        p = self.parent()
+        if p is not None:
+            ls = p.paths()
+        else:
+            ls = []
+        ls.append(self)
+        return ls
 
     def parent(self):
         """
@@ -426,6 +516,34 @@ class Name(object):
         self._base = nc.decompose(self._base)
         return self._base
 
+    def __getattr__(self, component):
+        """
+        __getattr__ returns the given naming convention component of the
+        name (self.base()) represented by self. Which components are legal
+        depends on the currently active NamingConvention.
+
+        __getattr__ is called when a non-existing attribute of self is
+        attempted read. A component starting with "_" may clash with
+        the private attributes of Name.
+
+        Example:
+
+            from pyphil.convention import SBConvention
+
+            n = Name.of("|grp|ns:R_leg_knee_amazing_IK_ctrl")
+            with SBConvention():
+                n.side        == "R"
+                n.module      == "leg"
+                n.basename    == "knee"
+                n.desc        == "amazing"
+                n.description == "amazing"
+                n.type        == "IK_ctrl"
+
+        :param component: the name of the name component to return
+        :returns:         the value of the named component, as string
+        """
+        return self._baseDecomposition().getComponent(component)
+
     def short(self, namespace=None):
         """
         short returns as string the represented name, without DAG path parents
@@ -486,23 +604,30 @@ class Name(object):
 
         return self._short
 
-    def relative(self):
+    def isValid(self, nc=None):
         """
-        relative returns a Name corresponding to the longest subpath of self
-        that does not have Name.world at its root. If self == Name.world
-        then relative returns None.
+        isValid returns True if the name represented by self is valid according
+        to the NamingConvention given by nc. If nc is None the current naming
+        convention as determined by NamingConvention.get() will be used.
 
-        Examples:
-            Name.of("|foo|bar").relative() == Name.of("foo|bar")
-            Name.of("foo|bar").relative()  == Name.of("foo|bar")
-            Name.world.relative()          == None
+        If no naming convention is provided or has been setup, the default
+        naming convention will simply check whether a name is a legal Maya name.
 
-        :return: A Name of the longest subpath not rooted at the world.
+        :param nc: The naming convention under which the name validity should
+                   be determined. Defaults to NamingConvention.get() if None.
+        :return:   True if the represented name is valid according to nc.
         """
-        root, subpath = self.splitRoot()
-        if root == Name.world:
-            return subpath
-        return self
+        if self == Name.world:
+            return True
+        if not self.namespace().isValid():
+            return False
+        if not self._baseDecomposition(nc).isValid():
+            return False
+
+        p = self.parent()
+        if p is None:
+            return True
+        return p.isValid(nc)
 
     def replace(self, parent=_none, short=_none, namespace=_none, base=_none, nc=None, **components):
         """
@@ -601,49 +726,6 @@ class Name(object):
 
         return Name(state=_decomposed, parent=parent, namespace=namespace, base=base, depth=depth)
 
-    def isFull(self):
-        """
-        isFull returns True if self is a DAG path rooted at the world object,
-        that is has a string representation starting with '|'.
-
-        Examples:
-            Name.of("|name").isFull()    == True
-            Name.of("name").isFull()     == False
-            Name.of("|ns:name").isFull() == True
-            Name.of("ns:name").isFull()  == False
-            Name.world.isFull()          == False
-
-        Name.world.isFull() returns False because Name.world isn't a DAG path.
-
-        :returns: True if self denotes a full path rooted at the world object.
-        """
-        return self.str().startswith("|")
-
-    def isValid(self, nc=None):
-        """
-        isValid returns True if the name represented by self is valid according
-        to the NamingConvention given by nc. If nc is None the current naming
-        convention as determined by NamingConvention.get() will be used.
-
-        If no naming convention is provided or has been setup, the default
-        naming convention will simply check whether a name is a legal Maya name.
-
-        :param nc: The naming convention under which the name validity should
-                   be determined. Defaults to NamingConvention.get() if None.
-        :return:   True if the represented name is valid according to nc.
-        """
-        if self == Name.world:
-            return True
-        if not self.namespace().isValid():
-            return False
-        if not self._baseDecomposition(nc).isValid():
-            return False
-
-        p = self.parent()
-        if p is None:
-            return True
-        return p.isValid(nc)
-
     def split(self):
         """
         split splits the DAG path represented by self into a parent and name,
@@ -698,51 +780,167 @@ class Name(object):
 
         return self._root, self._end
 
-    def paths(self):
+    def __add__(self, string):
         """
-        paths returns a list of all self's subpaths starting at self.root().
+        __add__ implements the shorthand
 
-        Example:
+            self + string
 
-            paths = Name.of("|a|ns:sample|path").paths()
-            len(paths) == 4
-            paths[0]   == Name.world
-            paths[1]   == Name.of("|a")
-            paths[2]   == Name.of("|a|ns:sample")
-            paths[3]   == Name.of("|a|ns:sample|path")
+        equivalent to
 
-        :returns: a list of all subpaths starting at self.root()
+            self.str() + string
+
+        Examples:
+
+            Name.of("|foo|bar") + ".translateX" == "|foo|bar.translateX"
+
+        :param string: the string to concat with self
+        :return:       the concatenation self.str() + string
         """
-        p = self.parent()
-        if p is not None:
-            ls = p.paths()
+        return self.str() + string
+
+    def __or__(self, subpath):
+        """
+        __or__ implements concatenation
+
+            self | subpath
+
+        equivalent to
+
+            Name.join(self, subpath)
+
+        Examples:
+
+            Name.world | "grp" | "name"     == Name.of("|grp|name")
+            Name.of("foo") | Name.of("bar") == Name.of("foo|bar")
+            Name.of("foo|bar") | "good"     == Name.of("foo|bar|good")
+            Name.of("foo") | "bar|good"     == Name.of("foo|bar|good")
+            Name.of("foo") | "|rooted"      == Name.of("foo|rooted")
+            Name.of("foo") | Name.world     == Name.of("foo")
+
+        Note that using Name.join will be more effective when concatenating
+        multiple path segments since intermediate Name objects won't be
+        created.
+
+        :param subpath: a Name, string, or NameComposition to join to self
+        :returns:       the path concatenation Name.join(self, subpath)
+        """
+        if isinstance(subpath, basestring):
+            clean = Name.sanitize(subpath)  # remove superfluous root namespaces
+            if "|" not in clean:
+                if clean == "<world>":
+                    return self
+                return Name(state=_parentSplit, root=self._root, parent=self, short=clean)
+        elif isinstance(subpath, Name):
+            if subpath.parent() is not None:
+                clean = subpath.str()
+            elif subpath == Name.world:
+                return self
+            else:
+                return Name(
+                    state=subpath._state,  # either _parentSplit or _decomposed after parent() call
+                    root=self._root, parent=self,
+                    short=subpath._short,
+                    namespace=subpath._namespace,
+                    base=subpath._base,
+                )
+        elif isinstance(subpath, NameComposition):
+            if subpath.name() == "<world>":
+                return self
+            return Name(state=_decomposed, root=self._root, parent=self, namespace=Namespace.root, base=subpath)
         else:
-            ls = []
-        ls.append(self)
-        return ls
+            raise ValueError("can only concatenate Name with Name, string, or NameComposition types (was type: {:s})".format(subpath.__class__))
 
-    # TODO:
-    # Use dynamic attributes to read components via naming convention
+        if self == Name.world:
+            name = ""
+        else:
+            name = self.str()
 
-    def __add__(self, other):
-        pass
+        if clean.startswith("|"):
+            name = name + clean
+        else:
+            name = name + "|" + clean
 
-    def __truediv__(self, other):
-        pass
+        return Name(name, root=self._root)
 
     def __eq__(self, other):
-        # TODO: Handle empty but explicit namespaces
+        """
+        __eq__ implements the equality operation
+
+            self == other
+
+        Two Name objects are equivalent if their string representations are
+        equivalent.
+        """
+        if self is other:
+            return True
         if isinstance(other, Name):
-            return self._name == other._name
-        elif isinstance(other, basestring):
-            return self._name == other
+            return self.str() == other.str()
         else:
             raise NotImplemented
 
     def __ne__(self, other):
-        x = self == other
-        if x is not NotImplemented:
-            return not x
-        return NotImplemented
+        """
+        __ne__ implements the inequality operation
+
+            self != other
+
+        equivalent to
+
+            not (self == other)
+
+        See self.__eq__ for details.
+        """
+        if self is other:
+            return False
+        if isinstance(other, Name):
+            return self.str() != other.str()
+        else:
+            raise NotImplemented
+
+    def __cmp__(self, other):
+        """
+        __cmp__ implements total ordering of Name objects, indirectly providing
+        implementations for the built-in cmp() function as well as the <=, >=,
+        <, and > operations.
+
+        Two Names are compared from their roots and down the DAG paths they
+        represent. If their roots compare equal, the next segment is compared,
+        and so on.
+
+        Two segments are compared first by namespace, and if those are equal,
+        their string names are compared. __cmp__ thus only returns 0 if
+        self == other.
+
+        Examples:
+            Name.of("abc")    < Name.of("def")     == True
+            Name.of("abc")    < Name.of("ns:abc")  == True
+            Name.of("a:name") < Name.of("bc:abc")  == True
+            Name.of("|name")  < Name.of("name")    == True
+            Name.of("a|b|c")  < Name.of("a|b|c|d") == True
+
+        :param other: the object to compare self to
+        :returns:     -1 if self < other, 0 if self == other, 1 if self > other.
+        """
+        if not isinstance(other, Name):
+            return NotImplemented
+
+        A, B = self, other
+        while True:
+            a, A = A.splitRoot()
+            b, B = B.splitRoot()
+            nsCmp = cmp(a.namespace(), b.namespace())
+            if nsCmp != 0:
+                return nsCmp
+            baseCmp = cmp(a.base(), b.base())
+            if baseCmp != 0:
+                return baseCmp
+            if A is None:
+                return -1 if B is not None else 0
+            if B is None:
+                return 1
+
+    def __hash__(self):
+        return self.str().__hash__()
 
 Name.world = Name.of("<world>")
