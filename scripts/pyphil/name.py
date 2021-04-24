@@ -91,6 +91,21 @@ class Name(object):
     """
     Name represents an immutable Maya name or DAG path. Its methods provide
     utilities for creating new names or reading parts of represented names.
+
+    KNOWN ISSUES:
+
+    The Name class does not handle empty names well. Many operations will
+    leniently accept empty names or DAG paths that include empty segments but
+    derived results may be incorrect. In the worst case a relative path that
+    start with an empty segment may be converted to or interpreted as a full
+    path rooted at the world object. In other words a, b, and c given by
+
+        a = Name.of("") | "is|bad"                    # AVOID THIS
+        b = Name.join("", "is|bad")                   # AVOID THIS
+        c = Name.of("this||is|bad").splitRoot()[1]    # AVOID THIS
+
+    may in some cases be interpreted as the full path Name.of("|is|bad").
+    Users must be careful to avoid constructing invalid, empty names.
     """
 
     """
