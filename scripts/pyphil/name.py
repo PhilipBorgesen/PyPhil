@@ -8,23 +8,60 @@ class Namespace(object):
     root = None
 
     @classmethod
+    def _verify(cls, ns):
+        if "|" in ns:
+            raise ValueError("invalid namespace '{:s}': path separator '|' found".format(ns))
+        if "::" in ns:
+            raise ValueError("invalid namespace '{:s}': empty namespaces forbidden".format(ns))
+
+    @classmethod
     def of(cls, ns):
-        if isinstance(ns, Namespace):
+        if isinstance(ns, basestring):
+            Namespace._verify(ns)
+            return Namespace(ns)
+        elif isinstance(ns, Namespace):
             return ns
-        if ns is None:
+        elif ns is None:
             return Namespace.root
-        if not isinstance(ns, basestring):
-            raise ValueError("cannot create Namespace from string and None types (was type: {:s})".format(ns.__class__))
-        return Namespace(ns)
+        raise ValueError("can only create Namespace from string or None types (was type: {:s})".format(ns.__class__))
 
     @classmethod
     def join(cls, *namespaces):
-        pass
 
-    def __init__(self, ns=None, parent=_none, name=None):
+        if len(namespaces) == 0:
+            raise ValueError("Namespace.join called without any arguments")
+
+        ls, root = [], False
+        for i in range(len(namespaces)):
+            ns = namespaces[i]
+            if isinstance(ns, basestring):
+                Namespace._verify(ns)
+            elif isinstance(ns, Namespace):
+                ns = ns.str()
+            else:
+                raise ValueError("can only join Namespace or string types (argument #{:d} was type: {:s})".format(i+1, ns.__class__))
+
+            if ns == "":
+                if i == 0:
+                    root = True
+                continue
+            if not ns.startswith(":"):
+                ls.append(":")  # relative namespace
+            ls.append(ns)
+
+        if len(ls) == 0:
+            return Namespace.root
+
+        if ls[0] == ":" and not root:
+            ls.pop(0)
+
+        return Namespace("".join(ls))
+
+    def __init__(self, ns=None, parent=_none, name=None, depth=-1):
         self._ns     = ns
         self._parent = parent
         self._name   = name
+        self._depth  = depth
 
     def __str__(self):
         return self.str()
@@ -33,25 +70,55 @@ class Namespace(object):
         return 'Namespace("{:s}")'.format(self.str())
 
     def str(self):
+        if self._ns is None:
+            ns     = self._name
+            parent = self._parent
+            if isinstance(parent, Namespace):
+                ns = parent.str() + ":" + ns
+            self._ns = ns
         return self._ns
 
     def hierarchy(self):
-        pass
+        p = self.parent()
+        if p is not None:
+            ls = p.hierarchy()
+        else:
+            ls = []
+        ls.append(self)
+        return ls
 
     def parent(self):
-        pass
+        if self._parent is _none:
+            parts = self._ns.rsplit(":", 1)
+            if len(parts) == 2:
+                p = parts[0]
+                p = Namespace.root if p == "" else Namespace(p, depth=self._depth-1)
+                self._parent = p
+            else:
+                self._parent = None
+            self._name = parts[-1]
+        return self._parent
 
     def hasParent(self):
-        pass
+        return self.parent() is not None
 
     def depth(self):
-        pass
+        if self._depth < 0:
+            if self._ns is not None:
+                self._depth = self._ns.count(":")
+            else:
+                p = self._parent
+                self._depth = p.depth() + 1 if isinstance(p, Namespace) else 0
+        return self._depth
 
     def name(self):
-        pass
+        if self._name is None:
+            self.parent()  # also sets self._name
+        return self._name
 
-    def isValid(self, name):
-        return True
+    def isValid(self):
+        # must start with a-z or A-Z, optionally followed by underscores, letters, and/or digits
+        return True  # TODO
 
     def split(self):
         pass
@@ -72,7 +139,7 @@ class Namespace(object):
         pass
 
     def __hash__(self):
-        pass
+        return self.str().__hash__()
 
 Namespace.root = Namespace(ns="", parent=None, name="")
 
@@ -86,8 +153,9 @@ _decomposed     = 2
 # 1) does not contain ':'
 # 2) is followed by '|' or is at the end of the string
 _rootNsPattern = re.compile(r"^:|(?<=\|):(?=[^|:]*(\Z|\|))")
-# matches '|' or ':' immediately followed by '|' or the end of the string.
-_emptyPattern  = re.compile(r"(?:[|]|:)(?:[|]|\Z)")
+# matches '|' or ':' immediately followed by '|' or the end of the string;
+# OR one namespace separator right after another.
+_emptyPattern  = re.compile(r"(?:[|]|:)(?:[|]|\Z)|::")
 
 class Name(object):
     """
@@ -115,13 +183,14 @@ class Name(object):
         :return:     the sanitized string
 
         :raises ValueError: if name is empty or defines a DAG path with empty
-                components.
+                components or empty non-root namespaces.
         """
         if name == "" or _emptyPattern.search(name) is not None:
+            subject = "namespaces" if "::" in name else "names"
             if "|" in name:
-                raise ValueError("invalid path '{:s}': empty names forbidden".format(name))
+                raise ValueError("invalid path '{:s}': empty {:s} forbidden".format(name, subject))
             else:
-                raise ValueError("invalid name '{:s}': empty names forbidden".format(name))
+                raise ValueError("invalid name '{:s}': empty {:s} forbidden".format(name, subject))
         return _rootNsPattern.sub(name, "")
 
     @classmethod
@@ -458,12 +527,14 @@ class Name(object):
 
     def namespace(self):
         """
-        namespace returns a Namespace representation of self's namespace.
-        If no explicit namespace has been declared this will be Namespace.root.
+        namespace returns a Namespace representation of self's namespace, which
+        will be Namespace.root if no explicit namespace has been declared.
+        If an explicit namespace has been declared it is always interpreted as
+        being rooted in Namespace.root.
 
         Examples:
-            Name.of("ns:grp|foo:bar").namespace() == Namespace.of("foo")
-            Name.of("a:b:c:foo:bar").namespace()  == Namespace.of("a:b:c:foo")
+            Name.of("ns:grp|foo:bar").namespace() == Namespace.of(":foo")
+            Name.of("a:b:c:foo:bar").namespace()  == Namespace.of(":a:b:c:foo")
             Name.of("ns:grp|bar").namespace()     == Namespace.root
             Name.of(":bar").namespace()           == Namespace.root
             Name.of("bar").namespace()            == Namespace.root
@@ -475,7 +546,8 @@ class Name(object):
             self.parent()  # also sets self._short
             parts = self._short.rsplit(":", 1)
             if len(parts) == 2:
-                self._namespace = Namespace.of(parts[0])
+                # namespaces parsed from names always starts in root
+                self._namespace = Namespace.of(":" + parts[0])
             else:
                 self._namespace = Namespace.root
             self._base = parts[-1]
