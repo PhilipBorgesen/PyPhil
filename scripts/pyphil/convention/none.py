@@ -24,7 +24,7 @@ class NoConvention(NamingConvention):
 
     def compose(self, **unsupported):
         if len(unsupported) == 0:
-            return NoComposition("")
+            raise ValueError("the composition of zero name components is undefined")
         raise UnknownComponentError(NoConvention, unsupported.keys())
 
 # Shadow the class definition with an instance of it, thereby creating a singleton.
@@ -33,6 +33,8 @@ NoConvention = NoConvention()
 class NoComposition(NameComposition):
 
     def __init__(self, name):
+        if not name:
+            raise ValueError("invalid name '': empty names forbidden")
         self._name = name
 
     #########################################

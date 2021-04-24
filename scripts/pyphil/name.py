@@ -86,26 +86,13 @@ _decomposed     = 2
 # 1) does not contain ':'
 # 2) is followed by '|' or is at the end of the string
 _rootNsPattern = re.compile(r"^:|(?<=\|):(?=[^|:]*(\Z|\|))")
+# matches '|' or ':' immediately followed by '|' or the end of the string.
+_emptyPattern  = re.compile(r"(?:[|]|:)(?:[|]|\Z)")
 
 class Name(object):
     """
     Name represents an immutable Maya name or DAG path. Its methods provide
     utilities for creating new names or reading parts of represented names.
-
-    KNOWN ISSUES:
-
-    The Name class does not handle empty names well. Many operations will
-    leniently accept empty names or DAG paths that include empty segments but
-    derived results may be incorrect. In the worst case a relative path that
-    start with an empty segment may be converted to or interpreted as a full
-    path rooted at the world object. In other words a, b, and c given by
-
-        a = Name.of("") | "is|bad"                    # AVOID THIS
-        b = Name.join("", "is|bad")                   # AVOID THIS
-        c = Name.of("this||is|bad").splitRoot()[1]    # AVOID THIS
-
-    may in some cases be interpreted as the full path Name.of("|is|bad").
-    Users must be careful to avoid constructing invalid, empty names.
     """
 
     """
@@ -121,11 +108,20 @@ class Name(object):
     def sanitize(cls, name):
         """
         sanitize removes all superfluous root namespace declarations from the
-        given string name.
+        given string name and verifies that name contains no empty name
+        segments.
 
         :param name: the string to sanitize
         :return:     the sanitized string
+
+        :raises ValueError: if name is empty or defines a DAG path with empty
+                components.
         """
+        if name == "" or _emptyPattern.search(name) is not None:
+            if "|" in name:
+                raise ValueError("invalid path '{:s}': empty names forbidden".format(name))
+            else:
+                raise ValueError("invalid name '{:s}': empty names forbidden".format(name))
         return _rootNsPattern.sub(name, "")
 
     @classmethod
@@ -714,6 +710,8 @@ class Name(object):
                     raise ValueError("invalid 'base' argument; path separator '|' found in '{:s}'".format(base))
                 if ":" in base:
                     raise ValueError("invalid 'base' argument; namespace separator ':' found in '{:s}'".format(base))
+                if base == "":
+                    raise ValueError("invalid 'base' argument; empty names forbidden")
             elif not isinstance(base, NameComposition):
                 raise ValueError(
                     "invalid 'base' argument; only string or NameComposition allowed (was type: {:s})".format(base.__class__))
@@ -726,12 +724,12 @@ class Name(object):
             base = self.base()
 
         # Inherit or construct the new parent
+        depth = -1
         if parent is _none:
             parent = self.parent()
             depth = self._depth
         elif parent is not None:
             parent = Name.of(parent)
-            depth = -1
 
         # Inherit or construct the new namespace
         if namespace is _none:
@@ -958,4 +956,4 @@ class Name(object):
     def __hash__(self):
         return self.str().__hash__()
 
-Name.world = Name.of("<world>")
+Name.world = Name("<world>")

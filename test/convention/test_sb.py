@@ -25,6 +25,11 @@ class TestSBConvention(TestCase):
         self.assertIsInstance(n, NameComposition)
         self.assertEqual("42", n.name())
 
+    def test_decompose_emptyString(self):
+        name = ""
+        with self.assertRaises(ValueError):
+            SBConvention.decompose(name)
+
     def test_compose_unknown(self):
         with self.assertRaises(UnknownComponentError):
             SBConvention.compose(unknown="value")
@@ -161,7 +166,7 @@ class TestSBName(TestCase):
         self.assertIsNone(n.getComponent("type"))
 
     def test_getComponent_unknown(self):
-        n = SBName()
+        n = SBName(side="R", module="arm", basename="shoulder", desc="description", type="geo")
         with self.assertRaises(UnknownComponentError):
             n.getComponent("unknown")
 
@@ -186,15 +191,36 @@ class TestSBName(TestCase):
         exp =    SBName(side="L", module="leg", basename="knee",     desc="description", type="Grp")
         self.assertEqual(exp.name(), r.name())
 
-    def test_replace_remove_all(self):
-        n   =    SBName(side="R", module="arm", basename="shoulder", desc="desc",        type="geo")
-        r   = n.replace(side=None, module=None, basename=None,       desc=None,          type=None)
-        exp =    SBName()
+    def test_replace_remove_most(self):
+        n   =    SBName(side="R",  module="arm", basename="shoulder", desc="desc", type="geo")
+        r   = n.replace(side=None, module=None,                       desc=None,   type=None)
+        exp =    SBName(                         basename="shoulder")
         self.assertEqual(exp.name(), r.name())
 
+    def test_replace_remove_all(self):  # produces an empty name
+        n =    SBName(side="R",  module="arm", basename="shoulder", desc="desc", type="geo")
+        with self.assertRaises(ValueError):
+            n.replace(side=None, module=None,  basename=None,       desc=None,   type=None)
+
+    def test_replace_empty_one(self):  # produces an empty name
+        n = SBName(side="R", module="arm", basename="shoulder", desc="description", type="geo")
+        for c in ["side", "module", "basename", "desc", "type"]:
+            args = {"side": None, "module": None, "basename": None, "desc": None, "type": None, c: ""}
+            with self.assertRaises(ValueError):
+                n.replace(**args)
+
+    def test_replace_empty_two(self):
+        n = SBName(side="R", module="arm", basename="shoulder", desc="description", type="geo")
+        for c1 in ["side", "module", "basename", "desc", "type"]:
+            for c2 in ["side", "module", "basename", "desc", "type"]:
+                if c1 == c2:
+                    continue
+                args = {"side": None, "module": None, "basename": None, "desc": None, "type": None, c1: "", c2: ""}
+                n.replace(**args)  # success
+
     def test_replace_missing(self):
-        n   =    SBName()
-        r   = n.replace(side="L", module="leg", basename="knee", desc="description", type="Grp")
+        n   =    SBName(                                         desc="description")
+        r   = n.replace(side="L", module="leg", basename="knee",                     type="Grp")
         exp =    SBName(side="L", module="leg", basename="knee", desc="description", type="Grp")
         self.assertEqual(exp.name(), r.name())
 
@@ -231,10 +257,6 @@ class TestSBName(TestCase):
     def test_name_only_type(self):
         n = SBName(type="type")
         self.assertEqual("type", n.name())
-
-    def test_name_empty(self):
-        n = SBName()
-        self.assertEqual("", n.name())
 
     def test_name_all_required(self):
         n = SBName(side="R", module="arm", basename="shoulder", type="geo")
@@ -353,7 +375,6 @@ class TestSBName(TestCase):
         self.assertDecomposition("______", side="", module="", basename="", desc="__", type="")
 
     def test_decompose_incomplete_empty(self):
-        self.assertDecomposition("",   basename="")
         self.assertDecomposition("_",  basename="", desc="")
         self.assertDecomposition("__", basename="", desc="_")
 

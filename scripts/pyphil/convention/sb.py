@@ -75,6 +75,17 @@ SBConvention = SBConvention()
 class SBName(NameComposition):
 
     def __init__(self, name=None, side=None, module=None, basename=None, desc=None, type=None):
+        if not name and not side and not module and not basename and not desc and not type:
+            if name == "":
+                raise ValueError("invalid name '': empty names forbidden")
+            empty = 0
+            for c in [side, module, basename, desc, type]:
+                if c == "":
+                    empty += 1
+            if empty < 2:
+                raise ValueError("invalid name: at least one name component must not be empty")
+            # else: 2+ components given which will be separated by underscore
+
         self._decomposed = name is None
         # Either name or the components (except desc) must be given
         self._name     = name
@@ -149,10 +160,6 @@ class SBName(NameComposition):
         self._decomposed = True
 
         name = self._name  # for ease of reference
-
-        if name == "":
-            self._basename = ""
-            return
 
         # Split out any <type> component containing underscore(s).
         # The match is greedy, so we take the longest suffix that

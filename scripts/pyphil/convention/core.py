@@ -97,6 +97,8 @@ class NamingConvention(object):
         :param name: A Maya node name without namespaces or DAG parents.
         :return:     A NameComposition object through which the name and its
                      conventional components can be accessed.
+
+        :raises ValueError: if name resolves to the empty string.
         """
         raise NotImplementedError
 
@@ -114,7 +116,7 @@ class NamingConvention(object):
         :raises UnknownComponentError: if one or more components are not
                 supported by the naming convention.
         :raises ValueError: if one or more components are missing to compose a
-                            valid name.
+                valid name.
         """
         raise NotImplementedError
 
@@ -207,6 +209,7 @@ class NameComposition(object):
 
         :raises UnknownComponentError: if one or more components are not
                 supported by the associated naming convention.
+        :raises ValueError: if the replacements would form an empty name.
         """
         raise NotImplementedError
 
