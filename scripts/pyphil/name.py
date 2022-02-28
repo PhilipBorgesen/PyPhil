@@ -4,8 +4,17 @@ from pyphil.convention import NamingConvention, NameComposition
 
 _none = object()  # a special marker for when no argument is passed
 
+# matches a valid namespace declaration which is any of:
+#  1) The empty string.
+#  2) A single colon.
+#  3) One or more strings matching a valid namespace name, separated by
+#     single colons and optionally prefixed by one. A valid namespace name
+#     is a case-insensitive letter between A and Z, optionally followed by
+#     case-insensitive letters between A and Z, digits, and/or underscores.
+_validNS = re.compile(r"^:?|:?[a-zA-Z][a-zA-Z_0-9]*(:[a-zA-Z][a-zA-Z_0-9]*)*\Z")
+
 class Namespace(object):
-    root = None
+    root = None  # Initialized after the Namespace class definition
 
     @classmethod
     def _verify(cls, ns):
@@ -117,11 +126,12 @@ class Namespace(object):
         return self._name
 
     def isValid(self):
-        # must start with a-z or A-Z, optionally followed by underscores, letters, and/or digits
-        return True  # TODO
+        return _validNS.match(self.str()) is not None
 
     def split(self):
-        pass
+        p = self.parent()
+        end = Namespace(ns=self._name, parent=None, name=self._name, depth=0)
+        return p, end
 
     def splitRoot(self):
         pass
@@ -823,6 +833,7 @@ class Name(object):
         Examples:
             Name.of("|a|b|c").split() == (Name.of("|a|b"), Name.of("c")   )
             Name.of("a|b|c" ).split() == (Name.of("a|b"),  Name.of("c")   )
+            Name.of("a|b:c" ).split() == (Name.of("a"),    Name.of("b:c") )
             Name.of("|name" ).split() == (Name.world,      Name.of("name"))
             Name.of("name"  ).split() == (None,            Name.of("name"))
             Name.world.split()        == (None,            Name.world     )
