@@ -65,11 +65,15 @@ class Namespace(object):
 
         return Namespace("".join(ls))
 
-    def __init__(self, ns=None, parent=_none, name=None, depth=-1):
+    def __init__(self, ns=None, root=None, parent=_none, name=None, depth=-1):
         self._ns     = ns
+        self._root   = root    # The top parent in the namespace; None until computed
         self._parent = parent
         self._name   = name
         self._depth  = depth
+
+        # Other attributes used to cache results
+        self._end    = _none  # _end != _none implies _root != None
 
     def __str__(self):
         return self.str()
@@ -100,7 +104,7 @@ class Namespace(object):
             parts = self._ns.rsplit(":", 1)
             if len(parts) == 2:
                 p = parts[0]
-                p = Namespace.root if p == "" else Namespace(p, depth=self._depth-1)
+                p = Namespace.root if p == "" else Namespace(p, root=self._root, depth=self._depth-1)
                 self._parent = p
             else:
                 self._parent = None
@@ -133,12 +137,26 @@ class Namespace(object):
         return p, end
 
     def splitRoot(self):
-        pass # TODO
+        if self._end is _none:
+            parts = self.str().split(":", 1)
+            if len(parts) == 2:
+                if self._root is None:
+                    r = parts[0]
+                    self._root = Namespace.root if r == "" else Namespace(r, depth=0)
+                self._end = Namespace(parts[1], depth=self._depth-1)
+            else:
+                self._root = self
+                self._end = None
+
+        return self._root, self._end
 
     def isRoot(self):
         if self._ns is not None:
             return self._ns == ""
         return self._parent is None and self._name == ""
+
+    def __add__(self, string):
+        return self.str() + string
 
     def __eq__(self, other):
         if self is other:
