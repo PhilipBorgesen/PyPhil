@@ -6,12 +6,11 @@ _none = object()  # a special marker for when no argument is passed
 
 # matches a valid namespace declaration which is any of:
 #  1) The empty string.
-#  2) A single colon.
-#  3) One or more strings matching a valid namespace name, separated by
+#  2) One or more strings matching a valid namespace name, separated by
 #     single colons and optionally prefixed by one. A valid namespace name
 #     is a case-insensitive letter between A and Z, optionally followed by
 #     case-insensitive letters between A and Z, digits, and/or underscores.
-_validNS = re.compile(r"^:?|:?[a-zA-Z][a-zA-Z_0-9]*(:[a-zA-Z][a-zA-Z_0-9]*)*\Z")
+_validNS = re.compile(r"^(:?[a-zA-Z][a-zA-Z_0-9]*(:[a-zA-Z][a-zA-Z_0-9]*)*)?\Z")
 
 class Namespace(object):
     root = None  # Initialized after the Namespace class definition
@@ -20,7 +19,7 @@ class Namespace(object):
     def _verify(cls, ns):
         if "|" in ns:
             raise ValueError("invalid namespace '{:s}': path separator '|' found".format(ns))
-        if "::" in ns:
+        if ":" == ns or "::" in ns:
             raise ValueError("invalid namespace '{:s}': empty namespaces forbidden".format(ns))
 
     @classmethod
@@ -137,7 +136,9 @@ class Namespace(object):
         pass
 
     def isRoot(self):
-        return self._ns == ""
+        if self._ns is not None:
+            return self._ns == ""
+        return self._parent is None and self._name == ""
 
     def __eq__(self, other):
         pass
@@ -557,7 +558,10 @@ class Name(object):
             parts = self._short.rsplit(":", 1)
             if len(parts) == 2:
                 # namespaces parsed from names always starts in root
-                self._namespace = Namespace.of(":" + parts[0])
+                if parts[0] != "":
+                    self._namespace = Namespace.of(":" + parts[0])
+                else:
+                    self._namespace = Namespace.root
             else:
                 self._namespace = Namespace.root
             self._base = parts[-1]
