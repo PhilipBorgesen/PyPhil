@@ -62,7 +62,7 @@ class NamingConvention(object):
                 nc = NamingConvention.get()
                 print (nc == SBConvention)      # prints "True"
 
-        :return: a new naming convention scope, using this naming convention.
+        :returns: a new naming convention scope, using this naming convention.
         """
         return NamingConventionScope(self)
 
@@ -74,7 +74,7 @@ class NamingConvention(object):
 
     def isNoConvention(self):
         """
-        :return: True if self is NoConvention
+        :returns: True if self is NoConvention
         """
         return False
 
@@ -95,7 +95,7 @@ class NamingConvention(object):
         denoted by self.
 
         :param name: A Maya node name without namespaces or DAG parents.
-        :return:     A NameComposition object through which the name and its
+        :returns:    A NameComposition object through which the name and its
                      conventional components can be accessed.
 
         :raises ValueError: if name resolves to the empty string.
@@ -110,7 +110,7 @@ class NamingConvention(object):
         by self.
 
         :param components: key-value arguments giving each component.
-        :return:           A NameComposition object through which the node name
+        :returns:          A NameComposition object through which the node name
                            and its conventional components can be accessed.
 
         :raises UnknownComponentError: if one or more components are not
@@ -192,7 +192,7 @@ class NameComposition(object):
 
     def name(self):
         """
-        :return: the name described by self
+        :returns: the name described by self
         """
         raise NotImplementedError
 
@@ -205,7 +205,7 @@ class NameComposition(object):
         Any component set to None will be absent in the result.
 
         :param components: key-value arguments listing component replacements.
-        :return:           a NameComposition describing the mutated name.
+        :returns:          a NameComposition describing the mutated name.
 
         :raises UnknownComponentError: if one or more components are not
                 supported by the associated naming convention.
@@ -218,7 +218,7 @@ class NameComposition(object):
         getComponent returns the string value of the given component name.
 
         :param component: name of the component to return
-        :return:          the value of the given component, or None
+        :returns:         the value of the given component, or None
 
         :raises UnknownComponentError: if the component is unsupported
                 by the associated naming convention.

@@ -104,7 +104,7 @@ class SBName(NameComposition):
 
     def side(self):
         """
-        :return: <side> component or None if missing
+        :returns: <side> component or None if missing
         """
         if not self._decomposed:
             self._decompose()
@@ -112,7 +112,7 @@ class SBName(NameComposition):
 
     def module(self):
         """
-        :return: <module> component or None if missing
+        :returns: <module> component or None if missing
         """
         if not self._decomposed:
             self._decompose()
@@ -120,7 +120,7 @@ class SBName(NameComposition):
 
     def basename(self):
         """
-        :return: <basename> component or None if missing
+        :returns: <basename> component or None if missing
         """
         if not self._decomposed:
             self._decompose()
@@ -128,7 +128,7 @@ class SBName(NameComposition):
 
     def description(self):
         """
-        :return: <desc> component or None if not set
+        :returns: <desc> component or None if not set
         """
         if not self._decomposed:
             self._decompose()
@@ -136,7 +136,7 @@ class SBName(NameComposition):
 
     def type(self):
         """
-        :return: <type> component or None if missing
+        :returns: <type> component or None if missing
         """
         if not self._decomposed:
             self._decompose()

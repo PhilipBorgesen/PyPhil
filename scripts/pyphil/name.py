@@ -13,6 +13,15 @@ _none = object()  # a special marker for when no argument is passed
 _validNS = re.compile(r"^(:?[a-zA-Z][a-zA-Z_0-9]*(:[a-zA-Z][a-zA-Z_0-9]*)*)?\Z")
 
 class Namespace(object):
+    """
+    Namespace represents an immutable Maya namespace. Its methods provide
+    utilities for forming new namespaces or reading parts of represented
+    namespaces.
+    """
+
+    """
+    root is the unnamed Maya root namespace given by the empty string.
+    """
     root = None  # Initialized after the Namespace class definition
 
     @classmethod
@@ -24,6 +33,20 @@ class Namespace(object):
 
     @classmethod
     def of(cls, ns):
+        """
+        of returns a Namespace representing the given namespace, which must be a
+        string, None, or an existing Namespace object.
+
+        Examples:
+            Namespace.of("relative:name:space")
+            Namespace.of(":absolute:name:space")
+            Namespace.of("namespace")
+            Namespace.of("")    # == Namespace.root
+            Namespace.of(None)  # == Namespace.root
+
+        :param ns: The namespace to return a Namespace for.
+        :returns:  a Namespace object.
+        """
         if isinstance(ns, basestring):
             Namespace._verify(ns)
             return Namespace(ns)
@@ -35,6 +58,35 @@ class Namespace(object):
 
     @classmethod
     def join(cls, *namespaces):
+        """
+        join forms a Namespace from multiple parts. Each part may be a string
+        or a Namespace. The result is all parts concatenated from left to right,
+        separated by exactly one ':'. For example:
+
+            Namespace.join(":foo", ":bar", "_42") == Namespace.of(":foo:bar:_42")
+
+        It is assumed that each part is a valid namespace, either a relative
+        namespace such as "foo" or "foo:bar" or an absolute namespace such as
+        ":foo" or ":foo:bar".
+
+        If the first of multiple parts is "", Namespace.root, or an absolute
+        namespace then the constructed Namespace will be an absolute namespace;
+        otherwise the constructed Namespace will be relative. If Namespace.root
+        or "" appears as any but the first part then that part is ignored.
+
+        Examples:
+            Namespace.join("a", "b:c", "d")           == Namespace.of("a:b:c:d")
+            Namespace.join("a", ":b:c", ":d")         == Namespace.of("a:b:c:d")
+            Namespace.join("", "foo", "", "bar")      == Namespace.of(":foo:bar")
+            Namespace.join(Namespace.root, "foo")     == Namespace.of(":foo")
+            Namespace.join(Namespace.root, "bar", "") == Namespace.of(":bar")
+            Namespace.join("")                        == Namespace.root
+            Namespace.join("", Namespace.root)        == Namespace.root
+
+        :param namespaces: list of namespace parts to join
+        :returns:          A Namespace object representing the combined
+                           namespace.
+        """
 
         if len(namespaces) == 0:
             raise ValueError("Namespace.join called without any arguments")
@@ -66,22 +118,35 @@ class Namespace(object):
         return Namespace("".join(ls))
 
     def __init__(self, ns=None, root=None, parent=_none, name=None, depth=-1):
-        self._ns     = ns
-        self._root   = root    # The top parent in the namespace; None until computed
-        self._parent = parent
-        self._name   = name
-        self._depth  = depth
+        self._ns     = ns      # The full namespace (string); may be None if only components are provided
+        self._root   = root    # The top parent in the namespace (Namespace); None until computed
+        self._parent = parent  # The parent of this namespace (Namespace); _none until computed
+        self._name   = name    # The name of this namespace (string): None until computed
+        self._depth  = depth   # How many parents the namespace has; negative until computed
 
         # Other attributes used to cache results
         self._end    = _none  # _end != _none implies _root != None
 
     def __str__(self):
+        """
+        :returns: self.str()
+        """
         return self.str()
 
     def __repr__(self):
         return 'Namespace("{:s}")'.format(self.str())
 
     def str(self):
+        """
+        str returns the namespace as a string.
+
+        Examples:
+            Namespace.of("foo:bar:test").str()            == "foo:bar:test"
+            Namespace.join(":foo", ":bar", "test").str()  == ":foo:bar:test"
+            Namespace.root.str()                          == ""
+
+        :returns: a string representation of the namespace
+        """
         if self._ns is None:
             ns     = self._name
             parent = self._parent
@@ -90,7 +155,67 @@ class Namespace(object):
             self._ns = ns
         return self._ns
 
+    def isAbsolute(self):
+        """
+        isAbsolute returns True if self is a namespace that is rooted in the
+        unnamed Maya root namespace.
+
+        Examples:
+            Namespace.of(":foo:bar").isAbsolute() == True
+            Namespace.of("foo:bar").isAbsolute()  == False
+            Namespace.of(":name").isAbsolute()    == True
+            Namespace.of("name").isAbsolute()     == False
+            Namespace.of("").isAbsolute()         == True
+            Namespace.root.isAbsolute()           == True
+
+        :returns: True if the root of self is Namespace.root
+        """
+        return self.str().startswith(":")
+
+    def isRelative(self):
+        """
+        isRelative is equivalent to
+
+            not self.isAbsolute()
+
+        Examples:
+            Namespace.of("foo:bar").isRelative()  == True
+            Namespace.of(":foo:bar").isRelative() == False
+            Namespace.of("name").isRelative()     == True
+            Namespace.of(":name").isRelative()    == False
+            Namespace.of("").isRelative()         == False
+            Namespace.root.isRelative()           == False
+
+        :returns: True if the root of self is not Namespace.root
+        """
+        return not self.isAbsolute()
+
+    def isRoot(self):
+        """
+        isRoot returns True if self represents the unnamed Maya root namespace.
+
+        :returns: self == Namespace.root
+        """
+        if self._ns is not None:
+            return self._ns == ""
+        return self._parent is None and self._name == ""
+
     def hierarchy(self):
+        """
+        hierarchy returns a list of self and all self's declared parent
+        namespaces.
+
+        Example:
+
+            namespaces = Namespace.of(":a:sample:namespace").hierarchy()
+            len(namespaces) == 4
+            namespaces[0]   == Namespace.root
+            namespaces[1]   == Namespace.of(":a")
+            namespaces[2]   == Namespace.of(":a:sample")
+            namespaces[3]   == Namespace.of(":a:sample:namespace")
+
+        :returns: a list of all subpaths starting at self.root()
+        """
         p = self.parent()
         if p is not None:
             ls = p.hierarchy()
@@ -100,6 +225,18 @@ class Namespace(object):
         return ls
 
     def parent(self):
+        """
+        parent returns a Namespace representing the parent namespace of self.
+        If self has no declared parent, None is returned.
+
+        Examples:
+            Namespace.of("foo:bar:dummy").parent() == Namespace.of("foo:bar")
+            Namespace.of("foo").parent()           == None
+            Namespace.of(":foo").parent()          == Namespace.root
+            Namespace.root.parent()                == None
+
+        :returns: a Namespace for the parent namespace of self.
+        """
         if self._parent is _none:
             parts = self._ns.rsplit(":", 1)
             if len(parts) == 2:
@@ -112,9 +249,25 @@ class Namespace(object):
         return self._parent
 
     def hasParent(self):
+        """
+        hasParent returns True if the namespace has a declared parent.
+
+        Examples:
+            Namespace.of("foo:bar").hasParent() == True
+            Namespace.of(":foo").hasParent()    == True
+            Namespace.of("foo").hasParent()     == False
+            Namespace.root.hasParent()          == False
+
+        :returns: True if self.parent() is not None
+        """
         return self.parent() is not None
 
     def depth(self):
+        """
+        depth returns how many declared parents the represented namespace has.
+
+        :returns: how many parents self has
+        """
         if self._depth < 0:
             if self._ns is not None:
                 self._depth = self._ns.count(":")
@@ -124,19 +277,73 @@ class Namespace(object):
         return self._depth
 
     def name(self):
+        """
+        name returns as string the represented namespace relative to its parent
+        namespace, i.e. without any parent namespaces.
+
+        Examples:
+            Namespace.of(":name").name()           == "name"
+            Namespace.of("parent:ns").name()       == "ns"
+            Namespace.of("grand:parent:ns").name() == "ns"
+            Namespace.root.name()                  == ""
+
+        :returns: the name of the represented namespace
+        """
         if self._name is None:
             self.parent()  # also sets self._name
         return self._name
 
     def isValid(self):
+        """
+        isValid returns True if the namespace represented by self is considered
+        valid by Maya. A valid namespace declaration is one where the name()
+        of every namespace in the hierarchy() but Namespace.root starts with a
+        letter in a-z or A-Z, followed by any number of letters a-z, A-Z, digits
+        0-9, and/or underscores.
+
+        :returns: whether the namespace declaration only consists of valid
+                  namespace names.
+        """
         return _validNS.match(self.str()) is not None
 
     def split(self):
+        """
+        split splits the namespace represented by self into a parent and name,
+        returning both as a tuple of Namespace objects. In other words
+
+            self.split() == ( self.parent() , Namespace.of(self.name()) )
+
+        although the computation is more effective than that.
+
+        Examples:
+            Namespace.of(":a:b:c").split() == (Namespace.of(":a:b"), Namespace.of("c")   )
+            Namespace.of("a:b:c" ).split() == (Namespace.of("a:b"),  Namespace.of("c")   )
+            Namespace.of(":name" ).split() == (Namespace.root,       Namespace.of("name"))
+            Namespace.of("name"  ).split() == (None,                 Namespace.of("name"))
+            Namespace.root.split()         == (None,                 Namespace.root      )
+
+        :returns: A tuple of two Namespace objects of which the first may be
+                  None.
+        """
         p = self.parent()
         end = Namespace(ns=self._name, parent=None, name=self._name, depth=0)
         return p, end
 
     def splitRoot(self):
+        """
+        splitRoot splits the namespace represented by self into its root and a
+        relative namespace, returning both as a tuple of Namespace objects.
+
+        Examples:
+            Namespace.of(":a:b:c").splitRoot() == (Namespace.root,       Namespace.of("a:b:c"))
+            Namespace.of("a:b:c" ).splitRoot() == (Namespace.of("a"),    Namespace.of("b:c")  )
+            Namespace.of(":name" ).splitRoot() == (Namespace.root,       Namespace.of("name") )
+            Namespace.of("name"  ).splitRoot() == (Namespace.of("name"), None            )
+            Namespace.root.splitRoot()         == (Namespace.root,       None            )
+
+        :returns: A tuple of two Namespace objects of which the second may be
+                  None.
+        """
         if self._end is _none:
             parts = self.str().split(":", 1)
             if len(parts) == 2:
@@ -150,15 +357,34 @@ class Namespace(object):
 
         return self._root, self._end
 
-    def isRoot(self):
-        if self._ns is not None:
-            return self._ns == ""
-        return self._parent is None and self._name == ""
-
     def __add__(self, string):
+        """
+        __add__ implements the shorthand
+
+            self + string
+
+        equivalent to
+
+            self.str() + string
+
+        Example:
+
+            Namespace.of("foo") + ":bar" == "foo:bar"
+
+        :param string: the string to concat with self
+        :returns:      the concatenation self.str() + string
+        """
         return self.str() + string
 
     def __eq__(self, other):
+        """
+        __eq__ implements the equality operation
+
+            self == other
+
+        Two Namespace objects are equivalent if their string representations are
+        equivalent.
+        """
         if self is other:
             return True
         if isinstance(other, Namespace):
@@ -167,6 +393,17 @@ class Namespace(object):
             raise NotImplemented
 
     def __ne__(self, other):
+        """
+        __ne__ implements the inequality operation
+
+            self != other
+
+        equivalent to
+
+            not (self == other)
+
+        See self.__eq__ for details.
+        """
         if self is other:
             return False
         if isinstance(other, Namespace):
@@ -175,6 +412,24 @@ class Namespace(object):
             raise NotImplemented
 
     def __cmp__(self, other):
+        """
+        __cmp__ implements total ordering of Namespace objects, indirectly
+        providing implementations for the built-in cmp() function as well as the
+        <=, >=, <, and > operations.
+
+        Two Namespace are compared from their roots and down the hierarchy they
+        represent. If their roots compare equal, the next segment is compared,
+        and so on. __cmp__ thus only returns 0 if self == other.
+
+        Examples:
+            Namespace.of("abc")    < Namespace.of("def")     == True
+            Namespace.of("a:name") < Namespace.of("bc:abc")  == True
+            Namespace.of(":name")  < Namespace.of("name")    == True
+            Namespace.of("a:b:c")  < Namespace.of("a:b:c:d") == True
+
+        :param other: the object to compare self to
+        :returns:     -1 if self < other, 0 if self == other, 1 if self > other.
+        """
         if not isinstance(other, Namespace):
             return NotImplemented
 
@@ -232,7 +487,7 @@ class Name(object):
         segments.
 
         :param name: the string to sanitize
-        :return:     the sanitized string
+        :returns:    the sanitized string
 
         :raises ValueError: if name is empty or defines a DAG path with empty
                 components or empty non-root namespaces.
@@ -308,7 +563,7 @@ class Name(object):
         :param components: Naming convention components that nc.compose() can
                            be called with to produce a base name, if both the
                            short and base arguments are None.
-        :return:           A Name object built from the given parts.
+        :returns:          A Name object built from the given parts.
         """
         if short is not None or base is not None:
             # Use a replace-based equivalent to avoid duplication of validation checks
@@ -337,7 +592,7 @@ class Name(object):
     @classmethod
     def join(cls, *names):
         """
-        join creates a DAG path from multiple parts. Each part may be a string,
+        join forms a DAG path from multiple parts. Each part may be a string,
         a Name, or a NameComposition. The result is all parts concatenated from
         left to right, separated by exactly one '|'. For example:
 
@@ -356,6 +611,8 @@ class Name(object):
         part is ignored.
 
         Examples:
+            Name.join("a", "b|c", "d")                    == Name.of("a|b|c|d")
+            Name.join("a", "|b|c", "|d")                  == Name.of("a|b|c|d")
             Name.join("<world>", "foo", "<world>", "bar") == Name.of("|foo|bar")
             Name.join(Name.world, "foo")                  == Name.of("|foo")
             Name.join(Name.world, "bar", "<world>")       == Name.of("|bar")
@@ -363,7 +620,7 @@ class Name(object):
             Name.join("<world>", Name.world)              == Name.world
 
         :param names: list of DAG path names to join
-        :return:      A Name object representing the combined path.
+        :returns:     A Name object representing the combined path.
         """
         if len(names) == 0:
             raise ValueError("Name.join called without any arguments")
@@ -453,15 +710,37 @@ class Name(object):
         Examples:
             Name.of("|name").isFull()    == True
             Name.of("name").isFull()     == False
+            Name.of("foo|bar").isFull()  == False
             Name.of("|ns:name").isFull() == True
             Name.of("ns:name").isFull()  == False
             Name.world.isFull()          == False
 
-        Name.world.isFull() returns False because Name.world isn't a DAG path.
+        Name.world.isFull() returns False because Name.world is not a DAG path.
 
         :returns: True if self denotes a full path rooted at the world object.
         """
         return self.str().startswith("|")
+
+    def isPartial(self):
+        """
+        isPartial returns True if self is a DAG path that is not rooted at the
+        world object.
+
+        Examples:
+            Name.of("|name").isPartial()    == False
+            Name.of("name").isPartial()     == True
+            Name.of("foo|bar").isPartial()  == True
+            Name.of("|ns:name").isPartial() == False
+            Name.of("ns:name").isPartial()  == True
+            Name.world.isPartial()          == False
+
+        Name.world.isPartial() returns False because Name.world is not a DAG
+        path.
+
+        :returns: True if self denotes a partial path.
+        """
+        s = self.str()
+        return len(s) > 0 and s[0] != "|"
 
     def relative(self):
         """
@@ -474,7 +753,7 @@ class Name(object):
             Name.of("foo|bar").relative()  == Name.of("foo|bar")
             Name.world.relative()          == None
 
-        :return: A Name of the longest subpath not rooted at the world.
+        :returns: A Name of the longest subpath not rooted at the world.
         """
         root, subpath = self.splitRoot()
         if root == Name.world:
@@ -638,7 +917,7 @@ class Name(object):
             Name.of("grp|ns:base").base()    == "base"
             Name.world.base()                == "<world>"
 
-        :return: the base of the represented name
+        :returns: the base of the represented name
         """
         if self._state < _decomposed:
             self.namespace()  # also sets self._base
@@ -753,7 +1032,7 @@ class Name(object):
 
         :param nc: The naming convention under which the name validity should
                    be determined. Defaults to NamingConvention.get() if None.
-        :return:   True if the represented name is valid according to nc.
+        :returns:  True if the represented name is valid according to nc.
         """
         if self == Name.world:
             return True
@@ -906,7 +1185,7 @@ class Name(object):
             Name.of("name"  ).splitRoot() == (Name.of("name"), None            )
             Name.world.splitRoot()        == (Name.world,      None            )
 
-        :return: A tuple of two Name objects of which the second may be None.
+        :returns: A tuple of two Name objects of which the second may be None.
         """
         if self._end is _none:
             parts = self.str().split("|", 1)
@@ -931,12 +1210,12 @@ class Name(object):
 
             self.str() + string
 
-        Examples:
+        Example:
 
             Name.of("|foo|bar") + ".translateX" == "|foo|bar.translateX"
 
         :param string: the string to concat with self
-        :return:       the concatenation self.str() + string
+        :returns:      the concatenation self.str() + string
         """
         return self.str() + string
 

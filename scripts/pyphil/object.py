@@ -70,7 +70,7 @@ class Object(object):
 
         As a special case, if iterable is None, list returns the empty list.
 
-        :return: a list of Objects representing the objects in iterable.
+        :returns: a list of Objects representing the objects in iterable.
 
         :raises ObjectError: if any of the patterns failed to identify a single,
                              unique object.
@@ -124,7 +124,7 @@ class Object(object):
         """
         world returns an Object referencing the world node.
 
-        :return: an Object representing the world.
+        :returns: an Object representing the world.
         """
         return Object(om.MItDag().root())
 
@@ -206,10 +206,10 @@ class Object(object):
 
     def uuid(self):
         """
-        uuid returns as string the universally unique identifier (UUID) of the object
-        represented by self.
+        uuid returns as string the universally unique identifier (UUID) of the
+        object represented by self.
 
-        :return: the uuid of the object as string
+        :returns: the uuid of the object as string
         """
         node = self._node
         if node is None:
