@@ -133,7 +133,7 @@ class Namespace(object):
         return p, end
 
     def splitRoot(self):
-        pass
+        pass # TODO
 
     def isRoot(self):
         if self._ns is not None:
@@ -141,13 +141,36 @@ class Namespace(object):
         return self._parent is None and self._name == ""
 
     def __eq__(self, other):
-        pass
+        if self is other:
+            return True
+        if isinstance(other, Namespace):
+            return self.str() == other.str()
+        else:
+            raise NotImplemented
 
     def __ne__(self, other):
-        pass
+        if self is other:
+            return False
+        if isinstance(other, Namespace):
+            return self.str() != other.str()
+        else:
+            raise NotImplemented
 
     def __cmp__(self, other):
-        pass
+        if not isinstance(other, Namespace):
+            return NotImplemented
+
+        A, B = self, other
+        while True:
+            a, A = A.splitRoot()
+            b, B = B.splitRoot()
+            nameCmp = cmp(a.name(), b.name())
+            if nameCmp != 0:
+                return nameCmp
+            if A is None:
+                return -1 if B is not None else 0
+            if B is None:
+                return 1
 
     def __hash__(self):
         return self.str().__hash__()
