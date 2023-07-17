@@ -1,1 +1,0 @@
-from mayatest import TestCase

@@ -1,8 +1,11 @@
+from typing import Optional
+
 import maya.cmds as cmds
 import unittest
 
 import maya.standalone
 maya.standalone.initialize()
+
 
 class TestCase(unittest.TestCase):
 
@@ -14,7 +17,7 @@ class TestCase(unittest.TestCase):
         self.loadScene(self.scene())
         self.sceneInit()
 
-    def loadScene(self, scene):
+    def loadScene(self, scene: Optional[str]):
         """
         loadScene opens the Maya project denoted by scene. If scene is None
         a default Maya project is loaded, equivalent to what Maya loads when
@@ -31,15 +34,15 @@ class TestCase(unittest.TestCase):
     # METHODS TO BE OVERRIDDEN IN SUBCLASSES #
     ##########################################
 
-    def scene(self):
+    def scene(self) -> Optional[str]:
         """
         scene returns the path to a Maya project to run each test in.
         Classes that derive from TestCase can override this method
-        to load a scene that manually has been setup rather than doing
+        to load a scene that manually has been set up rather than doing
         all setup programmatically from scratch (see self.sceneInit()).
 
-        By default scene returns None, meaning that a empty default project
-        should be used.
+        By default, scene returns None, meaning that an empty default
+        project should be used.
         """
         return None
 
@@ -47,6 +50,6 @@ class TestCase(unittest.TestCase):
         """
         sceneInit is run after the Maya scene denoted by self.scene()
         has been loaded. Classes that derive from TestCase should
-        override this method to setup the scene to fit their needs.
+        override this method to set up the scene to fit their needs.
         """
         pass
