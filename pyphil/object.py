@@ -4,7 +4,7 @@ import maya.cmds as cmds
 import maya.OpenMaya as om
 
 from .errors import NotUniqueError, NotExistError
-from .name import Name
+# from pyphil.path import Path
 from .types import PatternLike, Identifier
 
 
@@ -27,8 +27,8 @@ class Object(object):
         name   = cmds.rename(sphere, "roundThing")
         group  = cmds.group(name, name="group", world=True)
 
-        print(obj.name())    # prints "|group|roundThing"
         print(obj)           # prints "|group|roundThing"
+        print(obj.path())    # prints "|group|roundThing"
         print(obj.parent())  # prints "|group"
 
     """
@@ -65,7 +65,7 @@ class Object(object):
         As a special case, if name is "<world>" then Object.world() is returned.
 
         :param name: is a unique name or path to the object, either a string
-                     or an object with a reasonable __str__ implementation.
+                     or an object convertible to such by str(...).
         :returns:    an Object representing the object.
 
         :raises NotExistError:  if no object exist by the given name.
@@ -97,9 +97,10 @@ class Object(object):
     @classmethod
     def world(cls) -> "Object":
         """
-        world returns an Object referencing the world node.
+        world returns an Object referencing the world node which all other DAG
+        nodes are rooted under.
 
-        :returns: an Object representing the world.
+        :returns: an Object representing the world node.
         """
         return Object(om.MItDag().root())
 
@@ -126,36 +127,20 @@ class Object(object):
 
     def __str__(self) -> str:
         """
-        __str__ is called by Python when a string representation of self is needed, e.g.
-        when str(self) is called. The string representation is the shortest unique name
-        of the represented object or "<world>" if self represents the world object.
+        __str__ is called by Python when a string representation of self is
+        needed, e.g. when str(self) is called. The string representation is
+        a path to the represented object or "<world>" if self represents the
+        world object.
         """
-        return self.name(string=True)
+        return self._str()
 
     def __repr__(self) -> str:
-        return f'Object.from_name("{self.name(string=True)}")'
+        return f'Object.from_name("{self._str()}")'
 
-    def name(self, string: bool = False) -> Union[str, Name]:
-        """
-        name returns a unique string-based identifier for the object.
-        By default, a pyphil Name object is returned, but if the string
-        parameter is True a string of the shortest possible unique name
-        is returned instead.
-
-        If string=False and self represents a DAG node then the returned
-        Name will be rooted at Name.world, that is self.name().root() ==
-        Name.world. In other words, the return value will be a full path.
-
-        As a special case, if string=True and self represents the world
-        object then name returns "<world>". This is not a legal name but
-        neither is "", the actual DAG path to the world object.
-
-        :param string: if True, instead returns the name as string.
-        :returns:      a Name describing the long name of the object.
-        """
+    def _str(self, short: bool = False) -> str:
         node = self._node
         if isinstance(node, om.MFnDagNode):
-            if string:
+            if short:
                 n = node.partialPathName()
             else:
                 n = node.fullPathName()
@@ -165,11 +150,44 @@ class Object(object):
         if n == "":  # Nodes have non-empty names, except the world node
             n = "<world>"
 
-        if string:
-            return n
+        return n
 
-        return Name(n)  # skip checks done by Name.of
+    # def path(self, short: bool = False) -> Path:
+    #     """
+    #     path returns a unique string-based identifier for the object as
+    #     a PyPhil Path object. By default, the path will be in long form,
+    #     that is self.path().root() == Path.world, given self represents
+    #     a DAG node with world as an ancestor.
+    #
+    #     If short=True the path will instead be the shortest possible
+    #     partial path that uniquely can identify the object.
+    #
+    #     :param short:  if True, the path will be in partial, short form.
+    #     :returns:      a Path to the object.
+    #     """
+    #     return Path(self._str(short))  # skip checks done by Path.of
+    #
+    # def parent(self, i: int = 0) -> Optional["Object"]:
+    #     """
+    #     parent returns the ith parent of the object if it has such one,
+    #     otherwise None.
+    #
+    #     :returns: the ith parent of the node, or None
+    #     """
+    #     node = self._node
+    #     if isinstance(node, om.MFnDagNode):
+    #         if node.parentCount() > i:
+    #             return Object(node.parent(i))
+    #     return None
 
+    # @property
+    # def name(self) -> Name:
+    #     """
+    #     :returns: the name of the object
+    #     """
+    #     return Name(self._node.name())  # skip checks done by Name.of
+
+    @property
     def uuid(self) -> str:
         """
         uuid returns as string the universally unique identifier (UUID) of the
@@ -178,18 +196,6 @@ class Object(object):
         :returns: the uuid of the object as string
         """
         return self._node.uuid().asString()
-
-    def parent(self) -> Optional["Object"]:
-        """
-        parent returns the parent of the object if it has one, otherwise None.
-
-        :returns: the parent of the node, or None
-        """
-        node = self._node
-        if isinstance(node, om.MFnDagNode):
-            if node.parentCount() > 0:
-                return Object(node.parent(0))
-        return None
 
 
 def _query(identifier: Identifier) -> om.MObject:

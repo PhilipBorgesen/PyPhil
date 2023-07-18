@@ -1,5 +1,3 @@
-from typing import Union
-
 import maya.OpenMaya as om
 
 from .types import Identifier
