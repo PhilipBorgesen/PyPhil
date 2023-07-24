@@ -80,10 +80,10 @@ class TestObject(TestCase):
         with self.assertRaises(NotExistError) as _:
             Object.from_uuid(TestObject.uuid)
 
-    # def test_world(self):
-    #     obj = Object.from_name("|duplicate")
-    #     world = obj.parent()
-    #     self.assertEqual(world, Object.world())
+    def test_world(self):
+        obj = Object.from_name("|duplicate")
+        world = obj._node.parent(0)
+        self.assertEqual(world, Object.world())
 
     def test_eq(self):
         a = Object.from_name("unique")
@@ -159,27 +159,6 @@ class TestObject(TestCase):
         self.assertIsNotNone(Object.from_name("lambert1").uuid)
         # World node
         self.assertIsNotNone(Object.world().uuid)
-
-    # def test_parent_group(self):
-    #     unique = Object.from_name("unique")
-    #     parent = unique.parent()
-    #     self.assertIsNotNone(parent)
-    #     self.assertEqual("|group2|group1", str(parent.path()))
-    #
-    # def test_parent_world(self):
-    #     group2 = Object.from_name("|group2")
-    #     parent = group2.parent()
-    #     self.assertEqual(Object.world(), parent)
-    #
-    # def test_parent_none_world(self):
-    #     group2 = Object.from_name("|group2")
-    #     world = group2.parent()
-    #     self.assertIsNone(world.parent())
-    #
-    # def test_parent_none_nonDag(self):
-    #     nonDAG = Object.from_name("lambert1")
-    #     parent = nonDAG.parent()
-    #     self.assertIsNone(parent)
 
     # HELPERS
 

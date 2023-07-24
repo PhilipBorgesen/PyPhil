@@ -28,8 +28,6 @@ class Object(object):
         group  = cmds.group(name, name="group", world=True)
 
         print(obj)           # prints "|group|roundThing"
-        print(obj.path())    # prints "|group|roundThing"
-        print(obj.parent())  # prints "|group"
 
     """
 
@@ -166,26 +164,13 @@ class Object(object):
     #     :returns:      a Path to the object.
     #     """
     #     return Path(self._str(short))  # skip checks done by Path.of
-    #
-    # def parent(self, i: int = 0) -> Optional["Object"]:
-    #     """
-    #     parent returns the ith parent of the object if it has such one,
-    #     otherwise None.
-    #
-    #     :returns: the ith parent of the node, or None
-    #     """
-    #     node = self._node
-    #     if isinstance(node, om.MFnDagNode):
-    #         if node.parentCount() > i:
-    #             return Object(node.parent(i))
-    #     return None
 
     # @property
-    # def name(self) -> Name:
+    # def name(self) -> str:
     #     """
     #     :returns: the name of the object
     #     """
-    #     return Name(self._node.name())  # skip checks done by Name.of
+    #     return self._node.name()
 
     @property
     def uuid(self) -> str:
