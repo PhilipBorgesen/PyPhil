@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 import maya.OpenMaya as om
 
@@ -18,4 +18,4 @@ PatternLike = Any
 
 # An identifier is either a pattern or an OpenMaya uuid object. It is
 # the intention that an identifier uniquely identifies a single subject.
-Identifier = Pattern | om.MUuid
+Identifier = Union[Pattern, om.MUuid]

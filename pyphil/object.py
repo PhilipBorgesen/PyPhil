@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import maya.cmds as cmds
 import maya.OpenMaya as om
@@ -14,7 +14,7 @@ __all__ = ["Object"]
 class MetaObject:
 
     @property
-    def world(self) -> Object:
+    def world(self) -> "Object":
         """
         world returns an Object referencing the world node which all other DAG
         nodes are rooted under.
@@ -48,7 +48,7 @@ class Object(object, metaclass=MetaObject):
     _node: om.MFnDependencyNode
 
     @classmethod
-    def from_name(cls, name: PatternLike) -> Object:
+    def from_name(cls, name: PatternLike) -> "Object":
         """
         from_name returns an Object referencing the object identified by name.
         The name can be a partial path or contain wildcards but must identify
@@ -74,7 +74,7 @@ class Object(object, metaclass=MetaObject):
         return Object(_query(name))
 
     @classmethod
-    def from_uuid(cls, uuid: str | om.MUuid) -> Object:
+    def from_uuid(cls, uuid: Union[str, om.MUuid]) -> "Object":
         """
         from_uuid returns an Object referencing the object with the given uuid.
 
@@ -89,7 +89,7 @@ class Object(object, metaclass=MetaObject):
             raise ValueError(f"uuid must be a string or of type {om.MUuid.__class__}")
         return Object(_query(uuid))
 
-    def __new__(cls, x: om.MObject | PatternLike) -> Object:
+    def __new__(cls, x: om.MObject | PatternLike) -> "Object":
         if isinstance(x, om.MObject):
             return super().__new__(cls, x)
         return Object.from_name(x)

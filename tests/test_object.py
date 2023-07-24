@@ -1,3 +1,5 @@
+from typing import Union
+
 from pyphil.test import TestCase
 from pyphil import Object, NotExistError, NotUniqueError
 
@@ -158,7 +160,7 @@ class TestObject(TestCase):
         return obj._node.uuid()
 
     @classmethod
-    def set_uuid(cls, obj: Object, uuid: str | om.MUuid):
+    def set_uuid(cls, obj: Object, uuid: Union[str, om.MUuid]):
         if isinstance(uuid, str):
             uuid = om.MUuid(uuid)
         obj._node.setUuid(uuid)
