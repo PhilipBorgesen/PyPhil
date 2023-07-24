@@ -82,7 +82,7 @@ class TestObject(TestCase):
 
     def test_world(self):
         obj = Object.from_name("|duplicate")
-        world = obj._node.parent(0)
+        world = Object(obj._node.parent(0))
         self.assertEqual(world, Object.world())
 
     def test_eq(self):
