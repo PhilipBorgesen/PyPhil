@@ -21,7 +21,7 @@ class TestObject(TestCase):
 
     # TESTS
 
-    def test_new_shorthand(self):
+    def test_metaclass_call_success(self):
         obj = Object("unique")  # shorthand for Object.from_name(...)
         self.assertIsInstance(obj, Object)
 

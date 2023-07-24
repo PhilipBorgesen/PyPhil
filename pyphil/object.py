@@ -14,6 +14,21 @@ __all__ = ["Object"]
 class MetaObject(type):
 
     def __call__(cls, x: om.MObject | PatternLike) -> "Object":
+        """
+        Creates a new Object wrapping the given OpenMaya object. If the argument
+        x is not an OpenMaya MObject the call resolves to Object.from_name(x).
+
+        Args:
+            x: An OpenMaya object to wrap, or a pattern to invoke
+               Object.from_name with.
+
+        Returns:
+            An Object representing the given or identified object.
+
+        Raises:
+            NotExistError:  If no object exist by the possibly given pattern x.
+            NotUniqueError: If more than one object is identified by x.
+        """
         if isinstance(x, om.MObject):
             obj = Object.__new__(Object)
             obj.__init__(x)
@@ -23,10 +38,11 @@ class MetaObject(type):
     @property
     def world(self) -> "Object":
         """
-        world returns an Object referencing the world node which all other DAG
+        Returns an Object referencing the world node which all other DAG
         nodes are rooted under.
 
-        :returns: an Object representing the world node.
+        Returns:
+            An Object representing the world node.
         """
         return Object(om.MItDag().root())
 
@@ -57,7 +73,8 @@ class Object(object, metaclass=MetaObject):
     @classmethod
     def from_name(cls, name: PatternLike) -> "Object":
         """
-        from_name returns an Object referencing the object identified by name.
+        Returns an Object referencing the object identified by name.
+
         The name can be a partial path or contain wildcards but must identify
         a single object uniquely. Any name value given is attempted converted to
         a string before use.
@@ -66,12 +83,16 @@ class Object(object, metaclass=MetaObject):
 
         You can use Object(n) as a shorthand for Object.from_name(n).
 
-        :param name: is a unique name or path to the object, either a string
-                     or an object convertible to such by str(...).
-        :returns:    an Object representing the object.
+        Args:
+            name: A unique name or path to the object, either a string or an
+                  object convertible to such by str(...).
 
-        :raises NotExistError:  if no object exist by the given name.
-        :raises NotUniqueError: if more than one object is identified by name.
+        Returns:
+            An Object representing the identified object.
+
+        Raises:
+            NotExistError:  If no object exist by the given name.
+            NotUniqueError: If more than one object is identified by name.
         """
         if isinstance(name, Object):
             return name
@@ -83,12 +104,16 @@ class Object(object, metaclass=MetaObject):
     @classmethod
     def from_uuid(cls, uuid: Union[str, om.MUuid]) -> "Object":
         """
-        from_uuid returns an Object referencing the object with the given uuid.
+        Returns an Object referencing the object with the given uuid.
 
-        :param uuid: is the universally unique identifier of the object.
-        :returns:    an Object representing the object.
+        Args:
+            uuid: The universally unique identifier of the object.
 
-        :raises NotExistError: if no object exist with the given uuid.
+        Returns:
+            An Object representing the object.
+
+        Raises:
+            NotExistError: If no object exist with the given uuid.
         """
         if isinstance(uuid, str):
             uuid = om.MUuid(uuid)
@@ -169,24 +194,27 @@ class Object(object, metaclass=MetaObject):
     @property
     def uuid(self) -> str:
         """
-        uuid returns the universally unique identifier (UUID) of the object
-        represented by self.
+        Returns the universally unique identifier (UUID) of the object.
 
-        :returns: the uuid of the object
+        Returns:
+            The uuid of the object
         """
         return self._node.uuid().asString()
 
 
 def _query(identifier: Identifier) -> om.MObject:
     """
-    _query returns a reference to the OpenMaya node identified by identifier.
-    The identifier may be a string name pattern or an OpenMaya MUuid object.
+    Returns a reference to the OpenMaya node identified by identifier.
 
-    :param identifier: is a name pattern or UUID uniquely identifying the node.
-    :returns:          a MObject uniquely matching the identifier.
+    Args:
+        identifier: A name pattern or UUID uniquely identifying the node.
 
-    :raises NotExistError:  if no node was identified by the identifier.
-    :raises NotUniqueError: if multiple nodes matched the identifier pattern.
+    Returns:
+        A MObject uniquely matching the identifier.
+
+    Raises:
+        NotExistError:  If no node was identified by the identifier.
+        NotUniqueError: If multiple nodes matched the identifier pattern.
     """
     # MObject is a reference to a Maya node
     ref = om.MObject()
