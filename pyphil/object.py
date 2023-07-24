@@ -1,4 +1,4 @@
-from typing import Iterable, List, Optional, Union
+from typing import Optional
 
 import maya.cmds as cmds
 import maya.OpenMaya as om
@@ -11,7 +11,20 @@ from .types import PatternLike, Identifier
 __all__ = ["Object"]
 
 
-class Object(object):
+class MetaObject:
+
+    @property
+    def world(self) -> Object:
+        """
+        world returns an Object referencing the world node which all other DAG
+        nodes are rooted under.
+
+        :returns: an Object representing the world node.
+        """
+        return Object(om.MItDag().root())
+
+
+class Object(object, metaclass=MetaObject):
     """
     Object references a Maya node without using its name. It supports certain
     convenience operations, most noticeably getting the current name of the
@@ -23,7 +36,7 @@ class Object(object):
         import maya.cmds as cmds
 
         sphere = cmds.sphere(name="mySphere")[0]
-        obj    = Object.from_name(sphere)
+        obj    = Object(sphere)
         name   = cmds.rename(sphere, "roundThing")
         group  = cmds.group(name, name="group", world=True)
 
@@ -34,33 +47,17 @@ class Object(object):
     _obj: om.MObject
     _node: om.MFnDependencyNode
 
-    # @classmethod
-    # def list(cls, iterable: Optional[Iterable[PatternLike]]) -> List["Object"]:
-    #     """
-    #     list returns a list of Objects representing all objects identified
-    #     by patterns in iterable, which is a list, generator, or other Python
-    #     type which can be iterated. Each pattern must map to a single object.
-    #
-    #     As a special case, if iterable is None, list returns the empty list.
-    #
-    #     :returns: a list of Objects representing the objects in iterable.
-    #
-    #     :raises ObjectError: if any of the patterns failed to identify a single,
-    #                          unique object.
-    #     """
-    #     if iterable is None:
-    #         return []
-    #     return [cls.from_name(name) for name in iterable]
-
     @classmethod
-    def from_name(cls, name: PatternLike) -> "Object":
+    def from_name(cls, name: PatternLike) -> Object:
         """
         from_name returns an Object referencing the object identified by name.
         The name can be a partial path or contain wildcards but must identify
         a single object uniquely. Any name value given is attempted converted to
         a string before use.
 
-        As a special case, if name is "<world>" then Object.world() is returned.
+        As a special case, if name is "<world>" then Object.world is returned.
+
+        You can use Object(n) as a shorthand for Object.from_name(n).
 
         :param name: is a unique name or path to the object, either a string
                      or an object convertible to such by str(...).
@@ -73,11 +70,11 @@ class Object(object):
             return name
         name = str(name)
         if name == "<world>" or name == ":<world>":
-            return Object.world()
+            return Object.world
         return Object(_query(name))
 
     @classmethod
-    def from_uuid(cls, uuid: Union[str, om.MUuid]) -> "Object":
+    def from_uuid(cls, uuid: str | om.MUuid) -> Object:
         """
         from_uuid returns an Object referencing the object with the given uuid.
 
@@ -92,15 +89,10 @@ class Object(object):
             raise ValueError(f"uuid must be a string or of type {om.MUuid.__class__}")
         return Object(_query(uuid))
 
-    @classmethod
-    def world(cls) -> "Object":
-        """
-        world returns an Object referencing the world node which all other DAG
-        nodes are rooted under.
-
-        :returns: an Object representing the world node.
-        """
-        return Object(om.MItDag().root())
+    def __new__(cls, x: om.MObject | PatternLike) -> Object:
+        if isinstance(x, om.MObject):
+            return super().__new__(cls, x)
+        return Object.from_name(x)
 
     def __init__(self, mobject: om.MObject):
         self._obj = mobject
@@ -117,7 +109,7 @@ class Object(object):
     def __ne__(self, other) -> bool:
         return not isinstance(other, Object) or self._obj != other._obj
 
-    def __hash__(self):
+    def __hash__(self):  # TODO: Use MObjectHandle.hashCode
         # MObject does not implement __hash__ so this is the best hash
         # we can provide in the general case. Names, paths, and UUIDs may
         # change so hashes of those cannot be used.
@@ -133,7 +125,7 @@ class Object(object):
         return self._str()
 
     def __repr__(self) -> str:
-        return f'Object.from_name("{self._str()}")'
+        return f'Object("{self._str()}")'
 
     def _str(self, short: bool = False) -> str:
         node = self._node
@@ -165,7 +157,7 @@ class Object(object):
     #     """
     #     return Path(self._str(short))  # skip checks done by Path.of
 
-    # @property
+    # @property  # Only getter, no setter
     # def name(self) -> str:
     #     """
     #     :returns: the name of the object
@@ -175,10 +167,10 @@ class Object(object):
     @property
     def uuid(self) -> str:
         """
-        uuid returns as string the universally unique identifier (UUID) of the
-        object represented by self.
+        uuid returns the universally unique identifier (UUID) of the object
+        represented by self.
 
-        :returns: the uuid of the object as string
+        :returns: the uuid of the object
         """
         return self._node.uuid().asString()
 

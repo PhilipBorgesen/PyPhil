@@ -1,5 +1,3 @@
-from typing import Union
-
 from pyphil.test import TestCase
 from pyphil import Object, NotExistError, NotUniqueError
 
@@ -21,16 +19,9 @@ class TestObject(TestCase):
 
     # TESTS
 
-    # def test_list_none(self):
-    #     self.assertEqual([], Object.list(None))
-    #
-    # def test_list_many(self):
-    #     many = cmds.ls()
-    #     objects = Object.list(many)
-    #     self.assertEqual(list, type(objects))
-    #     self.assertEqual(len(many), len(objects))
-    #     for obj in objects:
-    #         self.assertIsInstance(obj, Object)
+    def test_new_shorthand(self):
+        obj = Object("unique")  # shorthand for Object.from_name(...)
+        self.assertIsInstance(obj, Object)
 
     def test_from_name_success(self):
         obj = Object.from_name("unique")
@@ -39,12 +30,12 @@ class TestObject(TestCase):
     def test_from_name_world_success(self):
         obj = Object.from_name("<world>")
         self.assertIsInstance(obj, Object)
-        self.assertEqual(obj, Object.world())
+        self.assertEqual(obj, Object.world)
 
     def test_from_name_world_ns_success(self):
         obj = Object.from_name(":<world>")
         self.assertIsInstance(obj, Object)
-        self.assertEqual(obj, Object.world())
+        self.assertEqual(obj, Object.world)
 
     def test_from_name_notFound(self):
         with self.assertRaises(NotExistError) as _:
@@ -83,7 +74,7 @@ class TestObject(TestCase):
     def test_world(self):
         obj = Object.from_name("|duplicate")
         world = Object(obj._node.parent(0))
-        self.assertEqual(world, Object.world())
+        self.assertEqual(world, Object.world)
 
     def test_eq(self):
         a = Object.from_name("unique")
@@ -135,7 +126,7 @@ class TestObject(TestCase):
     #     self.assertEqual("lambert1", str(Object.from_name("lambert1").path()))
     #     self.assertEqual("lambert1", str(Object.from_name(":lambert1").path()))
     #     # World node
-    #     self.assertEqual(Path.world, Object.world().path())
+    #     self.assertEqual(Path.world, Object.world.path())
     #
     # def test_name_short(self):
     #     # DAG nodes
@@ -148,7 +139,7 @@ class TestObject(TestCase):
     #     self.assertEqual("lambert1", Object.from_name("lambert1").name(string=True))
     #     self.assertEqual("lambert1", Object.from_name(":lambert1").name(string=True))
     #     # World node
-    #     self.assertEqual("<world>", Object.world().name(string=True))
+    #     self.assertEqual("<world>", Object.world.name(string=True))
 
     def test_uuid(self):
         # DAG nodes
@@ -158,7 +149,7 @@ class TestObject(TestCase):
         # Non-DAG nodes
         self.assertIsNotNone(Object.from_name("lambert1").uuid)
         # World node
-        self.assertIsNotNone(Object.world().uuid)
+        self.assertIsNotNone(Object.world.uuid)
 
     # HELPERS
 
@@ -167,7 +158,7 @@ class TestObject(TestCase):
         return obj._node.uuid()
 
     @classmethod
-    def set_uuid(cls, obj: Object, uuid: Union[str, om.MUuid]):
+    def set_uuid(cls, obj: Object, uuid: str | om.MUuid):
         if isinstance(uuid, str):
             uuid = om.MUuid(uuid)
         obj._node.setUuid(uuid)
