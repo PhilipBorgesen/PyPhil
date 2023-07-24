@@ -11,7 +11,14 @@ from .types import PatternLike, Identifier
 __all__ = ["Object"]
 
 
-class MetaObject:
+class MetaObject(type):
+
+    def __call__(cls, x: om.MObject | PatternLike) -> "Object":
+        if isinstance(x, om.MObject):
+            obj = Object.__new__(Object)
+            obj.__init__(x)
+            return obj
+        return Object.from_name(x)
 
     @property
     def world(self) -> "Object":
@@ -88,11 +95,6 @@ class Object(object, metaclass=MetaObject):
         elif not isinstance(uuid, om.MUuid):
             raise ValueError(f"uuid must be a string or of type {om.MUuid.__class__}")
         return Object(_query(uuid))
-
-    def __new__(cls, x: om.MObject | PatternLike) -> "Object":
-        if isinstance(x, om.MObject):
-            return super().__new__(cls, x)
-        return Object.from_name(x)
 
     def __init__(self, mobject: om.MObject):
         self._obj = mobject
