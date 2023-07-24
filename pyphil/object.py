@@ -30,9 +30,7 @@ class MetaObject(type):
             NotUniqueError: If more than one object is identified by x.
         """
         if isinstance(x, om.MObject):
-            obj = Object.__new__(Object)
-            obj.__init__(x)
-            return obj
+            return Object.__new__(Object, x)
         return Object.from_name(x)
 
     @property
@@ -102,7 +100,7 @@ class Object(object, metaclass=MetaObject):
         name = str(name)
         if name == "<world>" or name == ":<world>":
             return Object.world
-        return Object(_query(name))
+        return cls.__new__(cls, _query(name))
 
     @classmethod
     def from_uuid(cls, uuid: Union[str, om.MUuid]) -> "Object":
@@ -122,7 +120,13 @@ class Object(object, metaclass=MetaObject):
             uuid = om.MUuid(uuid)
         elif not isinstance(uuid, om.MUuid):
             raise ValueError(f"uuid must be a string or of type {om.MUuid.__class__}")
-        return Object(_query(uuid))
+        return cls.__new__(cls, _query(uuid))
+
+    def __new__(cls, mobject: om.MObject) -> "Object":
+        # Explicit definition due to MetaObject.__call__ shadowing.
+        obj = super().__new__(cls)
+        obj.__init__(mobject)
+        return obj
 
     def __init__(self, mobject: om.MObject):
         self._obj = om.MObjectHandle(mobject)
@@ -235,6 +239,10 @@ class Object(object, metaclass=MetaObject):
     #     :returns: the name of the object
     #     """
     #     return self._node.name()
+
+    # path() -> Path
+    # name -> Path  (without parent)
+    # namespace -> Namespace
 
     @property
     def uuid(self) -> str:
