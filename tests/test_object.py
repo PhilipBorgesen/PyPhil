@@ -1,7 +1,7 @@
 from typing import Union
 
 from pyphil.test import TestCase
-from pyphil import Object, NotExistError, NotUniqueError
+from pyphil import Object, NotExistError, NotUniqueError, InvalidObjectError
 
 import maya.OpenMaya as om
 import maya.cmds as cmds
@@ -79,39 +79,55 @@ class TestObject(TestCase):
         self.assertEqual(world, Object.world)
 
     def test_eq(self):
-        a = Object.from_name("unique")
-        b = Object.from_name("|duplicate")
-        c = Object.from_name("group1|duplicate")
+        a = "unique"
+        a1 = Object.from_name(a)
+        a2 = Object.from_name(a)
 
-        self.assertTrue(a == a)
-        self.assertTrue(b == b)
-        self.assertTrue(c == c)
+        b = "|duplicate"
+        b1 = Object.from_name(b)
+        b2 = Object.from_name(b)
 
-        self.assertFalse(a == b)
-        self.assertFalse(b == c)
+        c = "group1|duplicate"
+        c1 = Object.from_name(c)
+        c2 = Object.from_name(c)
 
-        self.assertFalse(a == "unique")
-        self.assertFalse(b == "|duplicate")
+        self.assertTrue(a1 == a2)
+        self.assertTrue(b1 == b2)
+        self.assertTrue(c1 == c2)
+
+        self.assertFalse(a1 == b1)
+        self.assertFalse(b1 == c1)
+
+        self.assertFalse(a1 == "unique")
+        self.assertFalse(b1 == "|duplicate")
 
     def test_neq(self):
-        a = Object.from_name("unique")
-        b = Object.from_name("|duplicate")
-        c = Object.from_name("group1|duplicate")
+        a = "unique"
+        a1 = Object.from_name(a)
+        a2 = Object.from_name(a)
 
-        self.assertFalse(a != a)
-        self.assertFalse(b != b)
-        self.assertFalse(c != c)
+        b = "|duplicate"
+        b1 = Object.from_name(b)
+        b2 = Object.from_name(b)
 
-        self.assertTrue(a != b)
-        self.assertTrue(b != c)
+        c = "group1|duplicate"
+        c1 = Object.from_name(c)
+        c2 = Object.from_name(c)
 
-        self.assertTrue(a != "unique")
-        self.assertTrue(b != "|duplicate")
+        self.assertFalse(a1 != a2)
+        self.assertFalse(b1 != b2)
+        self.assertFalse(c1 != c2)
+
+        self.assertTrue(a1 != b1)
+        self.assertTrue(b1 != c1)
+
+        self.assertTrue(a1 != "unique")
+        self.assertTrue(b1 != "|duplicate")
 
     def test_hash(self):
-        a = Object.from_name("unique")
-        b = Object.from_name("unique")
-        self.assertEqual(1, len({a, b}), "hash function not working")
+        a = hash(Object.from_name("unique"))
+        b = hash(Object.from_name("unique"))
+        self.assertEqual(a, b)
 
     def test_str(self):
         obj = Object.from_name("group1|duplicate")
@@ -148,10 +164,56 @@ class TestObject(TestCase):
         obj = Object.from_name("unique")
         uuid = TestObject.get_uuid(obj)
         self.assertEqual(uuid.asString(), obj.uuid)
+
         # Non-DAG nodes
-        self.assertIsNotNone(Object.from_name("lambert1").uuid)
+        obj = Object.from_name("lambert1")
+        self.assertIsNotNone(obj.uuid)
+
         # World node
         self.assertIsNotNone(Object.world.uuid)
+
+    def test_is_valid(self):
+        obj = Object.from_name("unique")
+        self.assertTrue(obj.is_valid())
+
+        cmds.delete("unique")
+        self.assertFalse(obj.is_valid())
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = str(obj)
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = repr(obj)
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = obj.uuid
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = hash(obj)
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = obj == obj
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = obj != obj
+
+    def test_is_valid_restore(self):
+        obj = Object.from_name("unique")
+        h = hash(obj)
+
+        cmds.delete("unique")
+        cmds.undo()
+
+        self.assertTrue(obj.is_valid())
+        self.assertEqual(h, hash(obj))
+
+    def test_invalid_op(self):
+        a = Object.from_name("unique")
+        b = Object.from_name("lambert1")
+        cmds.delete("unique")
+
+        # Verify that an object can be used as operand, even if invalid.
+        _ = b == a
 
     # HELPERS
 

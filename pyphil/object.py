@@ -3,7 +3,7 @@ from typing import Optional, Union
 import maya.cmds as cmds
 import maya.OpenMaya as om
 
-from .errors import NotUniqueError, NotExistError
+from .errors import NotUniqueError, NotExistError, InvalidObjectError
 # from pyphil.path import Path
 from .types import PatternLike, Identifier
 
@@ -65,9 +65,12 @@ class Object(object, metaclass=MetaObject):
 
         print(obj)           # prints "|group|roundThing"
 
+    NB! An Object may not be used after its referenced Maya node has been
+    deleted from the scene or otherwise invalidated. To check whether an Object
+    still is valid to use, call its is_valid method.
     """
 
-    _obj: om.MObject
+    _obj: om.MObjectHandle
     _node: om.MFnDependencyNode
 
     @classmethod
@@ -122,7 +125,7 @@ class Object(object, metaclass=MetaObject):
         return Object(_query(uuid))
 
     def __init__(self, mobject: om.MObject):
-        self._obj = mobject
+        self._obj = om.MObjectHandle(mobject)
         if mobject.hasFn(om.MFn.kDagNode):
             self._node = om.MFnDagNode(mobject)
         elif mobject.hasFn(om.MFn.kDependencyNode):
@@ -130,31 +133,73 @@ class Object(object, metaclass=MetaObject):
         else:
             raise NotImplementedError("Object currently only supports MFnDependencyNode nodes")
 
+    def is_valid(self) -> bool:
+        """
+        Returns True if the referenced object is valid to use.
+
+        If False, none of the other Object methods may be called, and doing so
+        anyway will result in InvalidObjectError being raised.
+
+        The most common reason for a referenced object to become invalid is by
+        deleting it from the scene. Undoing such deletion will generally restore
+        its validity.
+
+        Returns:
+            Whether the object still is valid to use.
+        """
+        return self._obj.isValid()
+
+    def _assert_validity(self):
+        if not self._obj.isValid():
+            raise InvalidObjectError(self)
+
     def __eq__(self, other) -> bool:
+        self._assert_validity()
         return isinstance(other, Object) and self._obj == other._obj
 
     def __ne__(self, other) -> bool:
+        self._assert_validity()
         return not isinstance(other, Object) or self._obj != other._obj
 
-    def __hash__(self):  # TODO: Use MObjectHandle.hashCode
-        # MObject does not implement __hash__ so this is the best hash
-        # we can provide in the general case. Names, paths, and UUIDs may
-        # change so hashes of those cannot be used.
-        return self._obj.apiType()
-
-    def __str__(self) -> str:
-        """
-        __str__ is called by Python when a string representation of self is
-        needed, e.g. when str(self) is called. The string representation is
-        a path to the represented object or "<world>" if self represents the
-        world object.
-        """
-        return self._str()
+    def __hash__(self) -> int:
+        self._assert_validity()
+        return self._obj.hashCode()
 
     def __repr__(self) -> str:
-        return f'Object("{self._str()}")'
+        return f'Object("{str(self)}")'
 
-    def _str(self, short: bool = False) -> str:
+    def __str__(self, short: bool = False) -> str:
+        """
+        Returns a name that uniquely identifies the referenced object.
+
+        If the referenced object is not a DAG node, its name is a plain string.
+        For such an object, the same value is returned irrespective of the
+        `short` argument.
+
+        If the referenced object is a DAG node, the name is a DAG path. Note
+        that multiple DAG paths may exist to any given DAG node; this method
+        just returns one of them.
+
+        As a special case, if the referenced object is the root world DAG node,
+        then this method returns "<world>". This is not a valid DAG path that
+        can be used with the Maya APIs, but neither is "" which is its actual
+        name. The value "<world>" is however recognized and in general accepted
+        by the PyPhil API.
+
+        Args:
+            short: Whether to return the shortest possible unique name path to
+                   the referenced object. By default, a long (absolute) path is
+                   returned for DAG nodes. This argument has no effect for non-
+                   DAG nodes.
+
+        Returns:
+            The name of the referenced object, possibly a DAG path.
+
+        Raises:
+            InvalidObjectError: If self.is_valid() == False
+        """
+        self._assert_validity()
+
         node = self._node
         if isinstance(node, om.MFnDagNode):
             if short:
@@ -198,7 +243,11 @@ class Object(object, metaclass=MetaObject):
 
         Returns:
             The uuid of the object
+
+        Raises:
+            InvalidObjectError: If self.is_valid() == False
         """
+        self._assert_validity()
         return self._node.uuid().asString()
 
 

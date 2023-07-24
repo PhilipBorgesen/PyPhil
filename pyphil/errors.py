@@ -4,6 +4,7 @@ from .types import Identifier
 
 __all__ = [
     "ObjectError",
+    "InvalidObjectError",
     "NotExistError",
     "NotUniqueError",
 ]
@@ -14,6 +15,23 @@ class ObjectError(RuntimeError):
     ObjectError is used to communicate errors related to PyPhil objects.
     """
     pass
+
+
+class InvalidObjectError(ObjectError):
+    """
+    InvalidObject is raised when an invalid Object is attempted used.
+    An Object obj is invalid if obj.is_valid() returns False.
+    """
+
+    """
+    The Object that is invalid.
+    """
+    object: "Object"
+
+    def __init__(self, obj: "Object"):
+        msg = f"Object {id(obj)} does not reference a valid Maya object; has it been deleted?"
+        super(ObjectError, self).__init__(msg)
+        self.object = obj
 
 
 class NotExistError(ObjectError):
