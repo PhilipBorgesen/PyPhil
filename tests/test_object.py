@@ -21,16 +21,16 @@ class TestObject(TestCase):
 
     # TESTS
 
-    def test_list_none(self):
-        self.assertEqual([], Object.list(None))
-
-    def test_list_many(self):
-        many = cmds.ls()
-        objects = Object.list(many)
-        self.assertEqual(list, type(objects))
-        self.assertEqual(len(many), len(objects))
-        for obj in objects:
-            self.assertIsInstance(obj, Object)
+    # def test_list_none(self):
+    #     self.assertEqual([], Object.list(None))
+    #
+    # def test_list_many(self):
+    #     many = cmds.ls()
+    #     objects = Object.list(many)
+    #     self.assertEqual(list, type(objects))
+    #     self.assertEqual(len(many), len(objects))
+    #     for obj in objects:
+    #         self.assertIsInstance(obj, Object)
 
     def test_from_name_success(self):
         obj = Object.from_name("unique")

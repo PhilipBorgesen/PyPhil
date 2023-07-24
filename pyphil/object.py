@@ -34,23 +34,23 @@ class Object(object):
     _obj: om.MObject
     _node: om.MFnDependencyNode
 
-    @classmethod
-    def list(cls, iterable: Optional[Iterable[PatternLike]]) -> List["Object"]:
-        """
-        list returns a list of Objects representing all objects identified
-        by patterns in iterable, which is a list, generator, or other Python
-        type which can be iterated. Each pattern must map to a single object.
-
-        As a special case, if iterable is None, list returns the empty list.
-
-        :returns: a list of Objects representing the objects in iterable.
-
-        :raises ObjectError: if any of the patterns failed to identify a single,
-                             unique object.
-        """
-        if iterable is None:
-            return []
-        return [cls.from_name(name) for name in iterable]
+    # @classmethod
+    # def list(cls, iterable: Optional[Iterable[PatternLike]]) -> List["Object"]:
+    #     """
+    #     list returns a list of Objects representing all objects identified
+    #     by patterns in iterable, which is a list, generator, or other Python
+    #     type which can be iterated. Each pattern must map to a single object.
+    #
+    #     As a special case, if iterable is None, list returns the empty list.
+    #
+    #     :returns: a list of Objects representing the objects in iterable.
+    #
+    #     :raises ObjectError: if any of the patterns failed to identify a single,
+    #                          unique object.
+    #     """
+    #     if iterable is None:
+    #         return []
+    #     return [cls.from_name(name) for name in iterable]
 
     @classmethod
     def from_name(cls, name: PatternLike) -> "Object":
