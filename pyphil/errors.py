@@ -21,15 +21,15 @@ class InvalidObjectError(ObjectError):
     """
     InvalidObject is raised when an invalid Object is attempted used.
     An Object obj is invalid if obj.is_valid() returns False.
+
+    Attributes:
+        object (Object): The Object that is invalid.
     """
 
-    """
-    The Object that is invalid.
-    """
     object: "Object"
 
     def __init__(self, obj: "Object"):
-        msg = f"Object {id(obj)} does not reference a valid Maya object; has it been deleted?"
+        msg = f"object {id(obj)} does not reference a valid Maya object; has it been deleted?"
         super(ObjectError, self).__init__(msg)
         self.object = obj
 
@@ -38,11 +38,11 @@ class NotExistError(ObjectError):
     """
     NotExistError is raised when an object does not exist or otherwise
     could not be identified or found.
+
+    Attributes:
+        identifier (Identifier): The identifier for which no instance could be found.
     """
 
-    """
-    The identifier for which no instance could be found.
-    """
     identifier: Identifier
 
     def __init__(self, identifier: Identifier):
@@ -57,11 +57,11 @@ class NotExistError(ObjectError):
 class NotUniqueError(ObjectError):
     """
     NotUniqueError is raised when something cannot be identified uniquely.
+
+    Attributes:
+        identifier (Identifier): The identifier for which multiple instances were found.
     """
 
-    """
-    The identifier for which multiple instances were found.
-    """
     identifier: Identifier
 
     def __init__(self, identifier: Identifier):
