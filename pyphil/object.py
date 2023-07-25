@@ -68,9 +68,6 @@ class Object(object, metaclass=MetaObject):
     still is valid to use, call its is_valid method.
     """
 
-    _obj: om.MObjectHandle
-    _node: om.MFnDependencyNode
-
     @classmethod
     def from_name(cls, name: PatternLike) -> "Object":
         """
@@ -128,6 +125,9 @@ class Object(object, metaclass=MetaObject):
         obj.__init__(mobject)
         return obj
 
+    _obj: om.MObjectHandle
+    _node: om.MFnDependencyNode
+
     def __init__(self, mobject: om.MObject):
         self._obj = om.MObjectHandle(mobject)
         if mobject.hasFn(om.MFn.kDagNode):
@@ -157,17 +157,17 @@ class Object(object, metaclass=MetaObject):
         if not self._obj.isValid():
             raise InvalidObjectError(self)
 
-    def __eq__(self, other) -> bool:
-        self._assert_validity()
-        return isinstance(other, Object) and self._obj == other._obj
-
-    def __ne__(self, other) -> bool:
-        self._assert_validity()
-        return not isinstance(other, Object) or self._obj != other._obj
-
     def __hash__(self) -> int:
         self._assert_validity()
         return self._obj.hashCode()
+
+    def __eq__(self, other) -> bool:
+        self._assert_validity()
+        if self is other:
+            return True
+        if isinstance(other, Object):
+            return self._obj == other._obj
+        return NotImplemented
 
     def __repr__(self) -> str:
         return f'Object("{str(self)}")'
@@ -247,10 +247,10 @@ class Object(object, metaclass=MetaObject):
     @property
     def uuid(self) -> str:
         """
-        Returns the universally unique identifier (UUID) of the object.
+        The universally unique identifier (UUID) of the object.
 
         Returns:
-            The uuid of the object
+            The uuid of the object.
 
         Raises:
             InvalidObjectError: If self.is_valid() == False
