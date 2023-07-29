@@ -5,6 +5,7 @@ import maya.OpenMaya as om
 
 from .errors import NotUniqueError, NotExistError, InvalidObjectError
 # from pyphil.path import Path
+from .namespace import Namespace
 from .types import PatternLike, Identifier
 
 
@@ -13,7 +14,7 @@ __all__ = ["Object"]
 
 class MetaObject(type):
 
-    def __call__(cls, x: om.MObject | PatternLike) -> "Object":
+    def __call__(cls, x: Union[om.MObject, PatternLike]) -> "Object":
         """
         Creates a new Object wrapping the given OpenMaya object. If the argument
         x is not an OpenMaya MObject the call resolves to Object.from_name(x).
@@ -242,7 +243,29 @@ class Object(object, metaclass=MetaObject):
 
     # path() -> Path
     # name -> Path  (without parent)
-    # namespace -> Namespace
+
+    # Move obj to Namespace.join(ns, obj.namespace), creating that
+    # namespace if not already existing:
+    #
+    #   obj.rename(f"{ns}:{obj.name}")
+    #
+
+    @property
+    def namespace(self) -> Namespace:
+        """
+        The namespace that the object resides in.
+
+        Returns:
+            The namespace of the object.
+
+        Raises:
+            InvalidObjectError: If self.is_valid() == False
+        """
+        self._assert_validity()
+        ns = self._node.parentNamespace()
+        if ns == "":
+            return Namespace.root
+        return Namespace(":" + ns)
 
     @property
     def uuid(self) -> str:

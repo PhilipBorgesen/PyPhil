@@ -29,7 +29,7 @@ class InvalidObjectError(ObjectError):
     object: "Object"
 
     def __init__(self, obj: "Object"):
-        msg = f"object {id(obj)} does not reference a valid Maya object; has it been deleted?"
+        msg = f"object {id(obj):x} does not reference a valid Maya object; has it been deleted?"
         super(ObjectError, self).__init__(msg)
         self.object = obj
 

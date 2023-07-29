@@ -1,7 +1,7 @@
 from typing import Union
 
 from pyphil.test import TestCase
-from pyphil import Object, NotExistError, NotUniqueError, InvalidObjectError
+from pyphil import Namespace, Object, NotExistError, NotUniqueError, InvalidObjectError
 
 import maya.OpenMaya as om
 import maya.cmds as cmds
@@ -21,7 +21,7 @@ class TestObject(TestCase):
 
     # TESTS
 
-    def test_metaclass_call_success(self):
+    def test_call_success(self):
         obj = Object("unique")  # shorthand for Object.from_name(...)
         self.assertIsInstance(obj, Object)
 
@@ -101,7 +101,7 @@ class TestObject(TestCase):
         self.assertFalse(a1 == "unique")
         self.assertFalse(b1 == "|duplicate")
 
-    def test_neq(self):
+    def test_ne(self):
         a = "unique"
         a1 = Object.from_name(a)
         a2 = Object.from_name(a)
@@ -159,18 +159,34 @@ class TestObject(TestCase):
     #     # World node
     #     self.assertEqual("<world>", Object.world.name(string=True))
 
+    names = [
+        "unique",    # DAG node
+        "lambert1",  # Non-DAG node
+        "<world>",   # World node
+    ]
+
+    def test_namespace(self):
+        ns = Namespace(":ns")
+        cmds.namespace(addNamespace=ns)
+
+        n = "unique"
+        obj = Object.from_name(n)
+
+        self.assertEqual(obj.namespace, Namespace.root)
+        cmds.namespace(setNamespace=ns)
+        self.assertEqual(obj.namespace, Namespace.root)
+
+        cmds.rename(n, f"{ns}:{n}")
+
+        self.assertEqual(obj.namespace, ns)
+        cmds.namespace(setNamespace=Namespace.root)
+        self.assertEqual(obj.namespace, ns)
+
     def test_uuid(self):
-        # DAG nodes
-        obj = Object.from_name("unique")
-        uuid = TestObject.get_uuid(obj)
-        self.assertEqual(uuid.asString(), obj.uuid)
-
-        # Non-DAG nodes
-        obj = Object.from_name("lambert1")
-        self.assertIsNotNone(obj.uuid)
-
-        # World node
-        self.assertIsNotNone(Object.world.uuid)
+        for n in self.names:
+            obj = Object.from_name(n)
+            uuid = TestObject.get_uuid(obj)
+            self.assertEqual(uuid.asString(), obj.uuid)
 
     def test_is_valid(self):
         obj = Object.from_name("unique")
@@ -187,6 +203,9 @@ class TestObject(TestCase):
 
         with self.assertRaises(InvalidObjectError) as _:
             _ = obj.uuid
+
+        with self.assertRaises(InvalidObjectError) as _:
+            _ = obj.namespace
 
         with self.assertRaises(InvalidObjectError) as _:
             _ = hash(obj)
